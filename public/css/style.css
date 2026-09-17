@@ -2173,6 +2173,33 @@ button, input, select {
   max-width: 100%;
 }
 
+/* 300x250 Adsterra Unit (Optimal for Download Card & Mobile Screens) */
+.ad-banner-300 {
+  max-width: 340px;
+  min-height: 280px;
+  padding: 12px 14px;
+  margin: 18px auto;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ad-frame-wrap-300 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 250px;
+  overflow: hidden;
+}
+
+.ad-frame-wrap-300 iframe {
+  border: none !important;
+  border-radius: 8px;
+  width: 300px !important;
+  height: 250px !important;
+  max-width: 100%;
+}
+
 /* ===================================================================
    RESPONSIVE DESIGN BREAKPOINTS - ALL DEVICES & TOUCH ACCESSIBILITY
    =================================================================== */
