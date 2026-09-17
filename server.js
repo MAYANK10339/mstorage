@@ -438,6 +438,82 @@ app.get('/api/files/download/:id', (req, res) => {
   filestream.pipe(res);
 });
 
+// Edit file metadata (name, timer, retention)
+app.put('/api/files/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { name, timerSeconds, retentionDays } = req.body;
+  const db = readDB();
+  const file = db.files.find(f => f.id === id && f.userId === req.user.id);
+
+  if (!file) {
+    return res.status(404).json({ error: 'File not found or permission denied' });
+  }
+
+  if (name && typeof name === 'string' && name.trim().length > 0) {
+    file.name = name.trim();
+  }
+
+  if (timerSeconds !== undefined) {
+    file.timerSeconds = parseInt(timerSeconds, 10) || 0;
+  }
+
+  if (retentionDays !== undefined) {
+    const rDays = parseInt(retentionDays, 10) || 0;
+    file.expiresAt = rDays > 0 ? new Date(Date.now() + rDays * 24 * 60 * 60 * 1000).toISOString() : null;
+  }
+
+  file.updatedAt = new Date().toISOString();
+  writeDB(db);
+
+  return res.json({ message: 'File details updated successfully', file });
+});
+
+// Replace / re-upload file content keeping same share link
+app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ error: 'No replacement file provided' });
+    }
+
+    const db = readDB();
+    const file = db.files.find(f => f.id === id && f.userId === req.user.id);
+
+    if (!file) {
+      // Clean up newly uploaded file if file not found
+      if (req.file.filename) {
+        const p = path.join(STORAGE_DIR, req.file.filename);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+      return res.status(404).json({ error: 'File not found or permission denied' });
+    }
+
+    // Safely remove previous physical file
+    if (file.storedName) {
+      const oldPath = path.join(STORAGE_DIR, file.storedName);
+      if (fs.existsSync(oldPath)) {
+        try { fs.unlinkSync(oldPath); } catch (e) { console.error('Error removing old file:', e); }
+      }
+    }
+
+    // Update with new file data
+    file.storedName = req.file.filename;
+    file.size = req.file.size;
+    file.mimeType = req.file.mimetype || mime.lookup(req.file.originalname) || 'application/octet-stream';
+    if (req.body.updateName === 'true' || !file.name) {
+      file.name = req.file.originalname;
+    }
+    file.updatedAt = new Date().toISOString();
+
+    writeDB(db);
+
+    return res.json({ message: 'File content replaced successfully under the same share link', file });
+  } catch (err) {
+    console.error('Replace error:', err);
+    return res.status(500).json({ error: 'Failed to replace file content' });
+  }
+});
+
 // Delete file
 app.delete('/api/files/:id', authenticateToken, (req, res) => {
   const { id } = req.params;

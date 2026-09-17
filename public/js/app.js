@@ -1,7 +1,7 @@
 /**
- * MSTORAGE - ULTRA-SMOOTH CLIENT CORE APPLICATION
+ * MSTORAGE - ULTRA-SMOOTH CLIENT APPLICATION
  * Developer & Creator: Mayank Mandrai
- * 100% Native Architecture - Zero Browser Alerts - Pure Direct Link Sharing
+ * 100% Native Architecture - Zero Browser Alerts - Pure Direct Link Sharing - Isolated Download Mode
  */
 
 (function () {
@@ -15,14 +15,21 @@
     currentRetention: 0,
     files: [],
     activeDownloadFile: null,
-    pendingDeleteId: null
+    pendingDeleteId: null,
+    editingFileId: null,
+    editSelectedTimer: 0,
+    replacementFile: null
   };
 
   // DOM Elements
   const el = {
+    // Header & Navigation
+    mainNavLinks: document.getElementById('main-nav-links'),
+    guestDownloadBadge: document.getElementById('guest-download-badge'),
+    authStateContainer: document.getElementById('auth-state-container'),
+
     // Auth
     btnOpenAuth: document.getElementById('btn-open-auth'),
-    authStateContainer: document.getElementById('auth-state-container'),
     authModal: document.getElementById('auth-modal'),
     btnCloseAuthModal: document.getElementById('btn-close-auth-modal'),
     authForm: document.getElementById('auth-form'),
@@ -85,6 +92,20 @@
     btnCopyLabel: document.getElementById('btn-copy-label'),
     shareOpenLinkBtn: document.getElementById('share-open-link-btn'),
 
+    // Edit & Replace Modal
+    editModal: document.getElementById('edit-modal'),
+    btnCloseEditModal: document.getElementById('btn-close-edit-modal'),
+    btnCancelEdit: document.getElementById('btn-cancel-edit'),
+    editForm: document.getElementById('edit-form'),
+    editFileName: document.getElementById('edit-file-name'),
+    editTimerSelector: document.getElementById('edit-timer-selector'),
+    editSelectRetention: document.getElementById('edit-select-retention'),
+    btnTriggerFileReplace: document.getElementById('btn-trigger-file-replace'),
+    inputReplaceFile: document.getElementById('input-replace-file'),
+    replaceFilePreview: document.getElementById('replace-file-preview'),
+    replaceFileNameText: document.getElementById('replace-file-name-text'),
+    btnSaveEdit: document.getElementById('btn-save-edit'),
+
     // In-App Confirm Modal (Zero native alerts)
     confirmModal: document.getElementById('confirm-modal'),
     btnConfirmCancel: document.getElementById('btn-confirm-cancel'),
@@ -114,7 +135,7 @@
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  // Smooth floating toast notification (Zero Browser Alerts)
+  // Smooth floating toast notification (Zero native alerts)
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -151,6 +172,22 @@
   // AUTHENTICATION & SESSION
   // -----------------------------------------------------------------
   function updateAuthUI() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPublicDownload = !!urlParams.get('d');
+
+    // If viewing a public download link, enforce isolated guest mode
+    if (isPublicDownload) {
+      if (el.mainNavLinks) el.mainNavLinks.classList.add('hidden');
+      if (el.guestDownloadBadge) el.guestDownloadBadge.classList.remove('hidden');
+      if (el.authStateContainer) el.authStateContainer.classList.add('hidden');
+      return;
+    }
+
+    // Normal Home / Dashboard view
+    if (el.mainNavLinks) el.mainNavLinks.classList.remove('hidden');
+    if (el.guestDownloadBadge) el.guestDownloadBadge.classList.add('hidden');
+    if (el.authStateContainer) el.authStateContainer.classList.remove('hidden');
+
     if (state.token && state.user) {
       el.authStateContainer.innerHTML = `
         <div class="user-profile-pill">
@@ -269,7 +306,6 @@
   // FILE UPLOADS (Files, Zip, Folder)
   // -----------------------------------------------------------------
   function setupUploadHandlers() {
-    // 3 Distinct Upload Buttons
     el.btnSelectFiles.addEventListener('click', () => {
       if (ensureAuth()) el.inputFiles.click();
     });
@@ -282,7 +318,6 @@
       if (ensureAuth()) el.inputFolder.click();
     });
 
-    // Inputs
     el.inputFiles.addEventListener('change', (e) => {
       if (e.target.files.length) uploadFileList(e.target.files, 'file');
     });
@@ -503,12 +538,19 @@
             </div>
 
             <div class="action-icon-buttons">
+              <!-- Edit & Replace Button -->
+              <button class="icon-btn btn-edit-item" title="Edit Settings &amp; Replace File" data-id="${escapeHtml(f.id)}">
+                <svg class="svg-icon svg-sm"><use href="#icon-edit"/></svg>
+              </button>
+              <!-- Direct Share Link Button -->
               <button class="icon-btn btn-share-item" title="Copy Direct Share Link" data-id="${escapeHtml(f.id)}">
                 <svg class="svg-icon svg-sm"><use href="#icon-link"/></svg>
               </button>
+              <!-- Download Button -->
               <button class="icon-btn btn-download-direct" title="Direct Download" data-id="${escapeHtml(f.id)}">
                 <svg class="svg-icon svg-sm"><use href="#icon-download"/></svg>
               </button>
+              <!-- Delete Button -->
               <button class="icon-btn btn-delete" title="Delete File &amp; Free Storage" data-id="${escapeHtml(f.id)}">
                 <svg class="svg-icon svg-sm"><use href="#icon-trash"/></svg>
               </button>
@@ -519,12 +561,19 @@
     }).join('');
 
     // Attach card event listeners
+    el.vaultFilesGrid.querySelectorAll('.btn-edit-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const file = state.files.find(f => f.id === id);
+        if (file) openEditModal(file);
+      });
+    });
+
     el.vaultFilesGrid.querySelectorAll('.btn-share-item').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         const file = state.files.find(f => f.id === id);
         if (file) {
-          // Instant copy to clipboard and open clean link modal
           const shareUrl = `${window.location.origin}/?d=${file.id}`;
           navigator.clipboard.writeText(shareUrl).then(() => {
             showToast('Direct share link copied to clipboard!', 'link');
@@ -549,7 +598,96 @@
     });
   }
 
-  // Smooth In-App Delete Confirmation (Zero Browser confirm() Popups)
+  // -----------------------------------------------------------------
+  // EDIT & REPLACE FILE MODAL
+  // -----------------------------------------------------------------
+  function openEditModal(file) {
+    state.editingFileId = file.id;
+    state.editSelectedTimer = file.timerSeconds || 0;
+    state.replacementFile = null;
+
+    el.editFileName.value = file.name;
+    el.replaceFilePreview.classList.add('hidden');
+    el.inputReplaceFile.value = '';
+
+    // Set timer pills
+    el.editTimerSelector.querySelectorAll('.pill-btn').forEach(b => {
+      const t = parseInt(b.getAttribute('data-timer'), 10);
+      if (t === state.editSelectedTimer) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+
+    el.editModal.classList.remove('hidden');
+  }
+
+  function closeEditModal() {
+    state.editingFileId = null;
+    state.replacementFile = null;
+    el.editModal.classList.add('hidden');
+  }
+
+  async function handleEditSubmit(e) {
+    e.preventDefault();
+    const id = state.editingFileId;
+    if (!id) return;
+
+    const newName = el.editFileName.value.trim();
+    const newTimer = state.editSelectedTimer;
+    const newRetention = parseInt(el.editSelectRetention.value, 10) || 0;
+
+    // 1. If replacement file chosen, upload replacement
+    if (state.replacementFile) {
+      showToast('Uploading replacement file under same link...', 'info');
+      const replaceData = new FormData();
+      replaceData.append('file', state.replacementFile);
+      replaceData.append('updateName', 'false');
+
+      try {
+        const repRes = await fetch(`/api/files/replace/${id}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          body: replaceData
+        });
+        if (!repRes.ok) {
+          showToast('Failed to replace file content', 'error');
+          return;
+        }
+      } catch (err) {
+        showToast('Network error replacing file', 'error');
+        return;
+      }
+    }
+
+    // 2. Update metadata (name, timer, retention)
+    try {
+      const updateRes = await fetch(`/api/files/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newName,
+          timerSeconds: newTimer,
+          retentionDays: newRetention
+        })
+      });
+
+      if (updateRes.ok) {
+        showToast('File details updated successfully!', 'success');
+        closeEditModal();
+        loadUserFiles();
+      } else {
+        showToast('Failed to update file settings', 'error');
+      }
+    } catch (err) {
+      showToast('Network error updating file', 'error');
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // DELETE FILE CONFIRMATION (Zero native alerts)
+  // -----------------------------------------------------------------
   function promptDeleteFile(id) {
     state.pendingDeleteId = id;
     el.confirmModal.classList.remove('hidden');
@@ -584,7 +722,7 @@
   }
 
   // -----------------------------------------------------------------
-  // PURE DIRECT LINK SHARING (No QR Code Clutter)
+  // PURE DIRECT LINK SHARING
   // -----------------------------------------------------------------
   function openShareModal(file) {
     const shareUrl = `${window.location.origin}/?d=${file.id}`;
@@ -606,11 +744,15 @@
     const urlParams = new URLSearchParams(window.location.search);
     const fileId = urlParams.get('d');
 
-    if (!fileId) return;
+    if (!fileId) {
+      updateAuthUI();
+      return;
+    }
 
     // Switch view to public download page
     el.mainView.classList.add('hidden');
     el.downloadView.classList.remove('hidden');
+    updateAuthUI(); // enforces guest mode
 
     try {
       const res = await fetch(`/api/files/public/${fileId}`);
@@ -706,7 +848,6 @@
   // INITIALIZATION & EVENT LISTENERS
   // -----------------------------------------------------------------
   function init() {
-    updateAuthUI();
     setupUploadHandlers();
 
     // Tab buttons in auth modal
@@ -715,7 +856,7 @@
     el.btnCloseAuthModal.addEventListener('click', closeAuthModal);
     el.authForm.addEventListener('submit', handleAuthSubmit);
 
-    // Modal backdrop click to close
+    // Modal backdrop clicks
     el.authModal.addEventListener('click', (e) => {
       if (e.target === el.authModal) closeAuthModal();
     });
@@ -723,6 +864,35 @@
       if (e.target === el.shareModal) closeShareModal();
     });
     el.btnCloseShareModal.addEventListener('click', closeShareModal);
+
+    // Edit modal events
+    el.btnCloseEditModal.addEventListener('click', closeEditModal);
+    el.btnCancelEdit.addEventListener('click', closeEditModal);
+    el.editModal.addEventListener('click', (e) => {
+      if (e.target === el.editModal) closeEditModal();
+    });
+    el.editForm.addEventListener('submit', handleEditSubmit);
+
+    // Edit timer selector pills
+    el.editTimerSelector.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pill-btn');
+      if (!btn) return;
+      el.editTimerSelector.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.editSelectedTimer = parseInt(btn.getAttribute('data-timer'), 10) || 0;
+    });
+
+    // File replace trigger
+    el.btnTriggerFileReplace.addEventListener('click', () => {
+      el.inputReplaceFile.click();
+    });
+    el.inputReplaceFile.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        state.replacementFile = e.target.files[0];
+        el.replaceFileNameText.textContent = `Replace with: ${state.replacementFile.name} (${formatBytes(state.replacementFile.size)})`;
+        el.replaceFilePreview.classList.remove('hidden');
+      }
+    });
 
     // In-App Confirm modal buttons
     el.btnConfirmCancel.addEventListener('click', closeConfirmModal);
@@ -746,16 +916,16 @@
       renderFiles();
     });
 
-    // Check public download route
+    // Check route (public download vs dashboard)
     checkPublicDownloadRoute();
 
-    // If user is logged in, load files
-    if (state.token) {
+    // If user is logged in and not on public download route, load files
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.get('d') && state.token) {
       loadUserFiles();
     }
   }
 
-  // Run on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

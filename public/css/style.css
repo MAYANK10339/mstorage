@@ -1470,6 +1470,62 @@ button, input, select {
   margin-top: 20px;
 }
 
+/* Guest Download Mode & Notice */
+.guest-download-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.guest-privacy-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  font-size: 0.82rem;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-input-plain {
+  padding-left: 14px;
+}
+
+/* Edit & Replace Modal Elements */
+.replace-box {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.replace-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--cyan);
+  margin-top: 8px;
+}
+
+.edit-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+
 /* Floating Toast Notifications (Zero Browser Alerts) */
 .toast-container {
   position: fixed;
