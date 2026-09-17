@@ -1,11 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 title Push Mstorage to GitHub
+color 0b
 
 echo ========================================================
-echo   Pushing Mstorage to GitHub
+echo   Mstorage PRO - Automated GitHub Push Utility
 echo   Repository: https://github.com/MAYANK10339/mstorage
-echo   Developer and Creator: Mayank Mandrai
+echo   Creator and Lead Developer: Mayank Mandrai
+echo   Latest Engine: XerEngine v5.0 Turbo + Adsterra Ads
 echo ========================================================
 echo.
 
@@ -28,14 +30,14 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-echo [*] Staging all updated files...
+echo [*] Staging updated files...
 "%GIT_CMD%" add .
 
-echo [*] Checking commit status...
-"%GIT_CMD%" commit -m "Update Mstorage: Edit & Replace files, isolated public download mode, and smooth UI" >nul 2>&1
+echo [*] Committing latest changes...
+"%GIT_CMD%" commit -m "Update Mstorage: XerEngine v5.0 Turbo, 3-dots responsive mobile menu, and Adsterra monetization" >nul 2>&1
 
 echo [*] Pushing to origin main branch...
-echo [INFO] If a browser window opens, please click 'Sign in with your browser' to authorize.
+echo [INFO] If a GitHub authentication prompt appears, authorize in your browser.
 echo.
 
 "%GIT_CMD%" push -u origin main
@@ -43,14 +45,15 @@ echo.
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo ========================================================
-    echo   [SUCCESS] Successfully pushed to:
+    echo   [SUCCESS] Successfully pushed all updates to GitHub!
     echo   https://github.com/MAYANK10339/mstorage
     echo ========================================================
 ) else (
     echo.
-    echo [NOTE] If the push failed due to authentication, please run:
-    echo        git push -u origin main
-    echo in your terminal and authorize GitHub in your browser.
+    echo ========================================================
+    echo   [NOTE] If push failed or was rejected, please check network
+    echo          or run: git push -u origin main
+    echo ========================================================
 )
 
 echo.
