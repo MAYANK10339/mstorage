@@ -410,6 +410,9 @@
     el.progressStatusSpeed.textContent = 'Streaming directly to storage...';
 
     const startTime = Date.now();
+    let lastTime = startTime;
+    let lastLoaded = 0;
+    let rollingSpeed = 0;
     const xhr = new XMLHttpRequest();
 
     xhr.upload.addEventListener('progress', (e) => {
@@ -418,9 +421,21 @@
         el.progressBarFill.style.width = `${percent}%`;
         el.progressPercentageText.textContent = `${percent}%`;
 
-        const elapsedSeconds = (Date.now() - startTime) / 1000;
-        const bytesPerSecond = elapsedSeconds > 0 ? e.loaded / elapsedSeconds : 0;
-        el.progressStatusSpeed.textContent = `${formatBytes(bytesPerSecond)}/s`;
+        const now = Date.now();
+        const timeDiff = (now - lastTime) / 1000;
+
+        // Update real-time rolling speed every 250ms
+        if (timeDiff >= 0.25) {
+          const bytesDiff = e.loaded - lastLoaded;
+          const currentSpeed = bytesDiff / timeDiff;
+          rollingSpeed = rollingSpeed === 0 ? currentSpeed : (rollingSpeed * 0.4 + currentSpeed * 0.6);
+          lastTime = now;
+          lastLoaded = e.loaded;
+        }
+
+        const effectiveSpeed = rollingSpeed > 0 ? rollingSpeed : (e.loaded / ((now - startTime) / 1000 || 1));
+        const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
+        el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
         el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
       }
     });
