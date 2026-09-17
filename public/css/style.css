@@ -2129,6 +2129,50 @@ button, input, select {
   }
 }
 
+/* Adsterra Sponsor Banner Container */
+.ad-banner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 22px auto;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  max-width: 760px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.ad-label {
+  font-size: 0.65rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ad-frame-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  overflow: hidden;
+}
+
+.ad-frame-wrap iframe {
+  border: none !important;
+  border-radius: 6px;
+  max-width: 100%;
+}
+
 /* ===================================================================
    RESPONSIVE DESIGN BREAKPOINTS - ALL DEVICES & TOUCH ACCESSIBILITY
    =================================================================== */
@@ -2777,10 +2821,41 @@ button, input, select {
   .footer-meta {
     text-align: center;
   }
+
+  /* Adsterra responsive scaling on mobile */
+  .ad-banner-container {
+    padding: 8px 4px;
+    margin: 16px auto;
+    border-radius: var(--radius-sm);
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .ad-frame-wrap {
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90px;
+  }
+
+  .ad-frame-wrap iframe {
+    transform: scale(calc((100vw - 32px) / 728));
+    transform-origin: center center;
+  }
 }
 
 /* 3. ULTRA-NARROW MOBILE PHONES (max-width: 380px) */
 @media (max-width: 380px) {
+  .ad-frame-wrap {
+    height: 65px;
+  }
+
+  .ad-frame-wrap iframe {
+    transform: scale(calc((100vw - 20px) / 728));
+    transform-origin: center center;
+  }
   .header-container {
     padding: 6px 8px;
     gap: 8px;
