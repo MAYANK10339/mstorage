@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mstorage - Ultra-Fast Cloud Storage & Instant File Sharing</title>
+  <meta name="description" content="Mstorage by Mayank Mandrai. Instant file, zip, and folder uploads with no size limit, custom download timers, and zero friction 4-digit PIN authentication.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- SVG Icon Library (Zero Emojis - 100% Handcrafted Crisp Vectors) -->
+  <svg style="display: none;">
+    <defs>
+      <!-- Logo Symbol -->
+      <g id="icon-logo">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Upload Cloud -->
+      <g id="icon-cloud-upload">
+        <path d="M16 16l-4-4m0 0l-4 4m4-4v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- File Icon -->
+      <g id="icon-file">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Folder Icon -->
+      <g id="icon-folder">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Zip Icon -->
+      <g id="icon-zip">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10 10h4M10 13h4M10 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <!-- Timer Icon -->
+      <g id="icon-timer">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+        <polyline points="12 7 12 12 15 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <!-- Download Icon -->
+      <g id="icon-download">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="7 10 12 15 17 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Lock Icon -->
+      <g id="icon-lock">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <!-- User Icon -->
+      <g id="icon-user">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"/>
+      </g>
+      <!-- Copy Icon -->
+      <g id="icon-copy">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2"/>
+      </g>
+      <!-- QR Icon -->
+      <g id="icon-qr">
+        <rect x="3" y="3" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="14" y="3" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="3" y="14" width="7" height="7" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M14 14h2v2h-2zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z" fill="currentColor"/>
+      </g>
+      <!-- Trash Icon -->
+      <g id="icon-trash">
+        <polyline points="3 6 5 6 21 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" fill="none" stroke="currentColor" stroke-width="2"/>
+      </g>
+      <!-- Check Icon -->
+      <g id="icon-check">
+        <polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Cross Icon -->
+      <g id="icon-cross">
+        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <!-- Speed Icon -->
+      <g id="icon-speed">
+        <path d="M22 12A10 10 0 0 0 2 12" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M12 12l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+      </g>
+      <!-- Shield Icon -->
+      <g id="icon-shield">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </g>
+      <!-- Server Icon -->
+      <g id="icon-server">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="6" y1="6" x2="6.01" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="6" y1="18" x2="6.01" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </g>
+    </defs>
+  </svg>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Header / Navigation -->
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="brand-link" id="brand-home-link">
+        <div class="brand-icon-box">
+          <svg class="svg-icon"><use href="#icon-logo"/></svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Mstorage</span>
+          <span class="brand-badge">PRO</span>
+        </div>
+      </a>
+
+      <!-- Creator Attribution Badge -->
+      <div class="creator-badge" title="Created and Designed by Mayank Mandrai">
+        <span class="creator-badge-dot"></span>
+        <span class="creator-badge-label">Creator &amp; Dev:</span>
+        <strong class="creator-badge-name">Mayank Mandrai</strong>
+      </div>
+
+      <!-- Header Actions / Auth Status -->
+      <div class="header-actions">
+        <nav class="nav-links">
+          <a href="#upload-section" class="nav-link">Upload</a>
+          <a href="#comparison-section" class="nav-link">Compare</a>
+          <a href="#about-section" class="nav-link">About</a>
+        </nav>
+
+        <div id="auth-state-container" class="auth-state-box">
+          <!-- Populated by JS: Either Login button or User Profile Pill -->
+          <button id="btn-open-auth" class="btn btn-primary btn-sm">
+            <svg class="svg-icon svg-sm"><use href="#icon-lock"/></svg>
+            <span>Login / Register</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="main-content">
+
+    <!-- PUBLIC DOWNLOAD VIEW (Displayed when ?d=fileId is in the URL) -->
+    <section id="download-view" class="section download-view hidden">
+      <div class="download-card">
+        <div class="download-card-header">
+          <div class="download-file-icon" id="dl-file-icon">
+            <svg class="svg-icon svg-lg"><use href="#icon-file"/></svg>
+          </div>
+          <div class="download-status-badge">
+            <span class="live-dot"></span> Ready for Download
+          </div>
+        </div>
+
+        <h1 class="download-title" id="dl-file-name">Loading File...</h1>
+        <div class="download-meta-row">
+          <div class="meta-item">
+            <span class="meta-label">Size</span>
+            <strong class="meta-value" id="dl-file-size">--</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Uploaded By</span>
+            <strong class="meta-value" id="dl-uploader">@username</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Downloads</span>
+            <strong class="meta-value" id="dl-downloads-count">0</strong>
+          </div>
+        </div>
+
+        <!-- Timer Countdown Box -->
+        <div id="dl-timer-container" class="timer-display-box hidden">
+          <div class="timer-circle-wrap">
+            <svg class="timer-svg" viewBox="0 0 100 100">
+              <circle class="timer-circle-bg" cx="50" cy="50" r="45"/>
+              <circle class="timer-circle-bar" id="dl-timer-bar" cx="50" cy="50" r="45"/>
+            </svg>
+            <div class="timer-number-overlay" id="dl-timer-seconds">5</div>
+          </div>
+          <div class="timer-info-text">
+            <h4>Preparing Direct Stream</h4>
+            <p>Your high-speed download unlocks automatically when the timer reaches zero.</p>
+          </div>
+        </div>
+
+        <!-- Direct Download Action Button -->
+        <div class="download-actions">
+          <button id="btn-trigger-download" class="btn btn-accent btn-xl btn-block" disabled>
+            <svg class="svg-icon"><use href="#icon-download"/></svg>
+            <span id="btn-dl-label">Please wait for timer...</span>
+          </button>
+        </div>
+
+        <!-- Extra public tools -->
+        <div class="download-sub-actions">
+          <button id="btn-copy-public-link" class="btn btn-secondary btn-sm">
+            <svg class="svg-icon svg-sm"><use href="#icon-copy"/></svg>
+            <span>Copy Link</span>
+          </button>
+          <button id="btn-show-public-qr" class="btn btn-secondary btn-sm">
+            <svg class="svg-icon svg-sm"><use href="#icon-qr"/></svg>
+            <span>QR Code</span>
+          </button>
+          <a href="/" class="btn btn-ghost btn-sm">
+            <span>Upload Your Own Files</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD & UPLOAD HERO (Main View) -->
+    <div id="main-view" class="main-view">
+
+      <!-- Hero Banner -->
+      <section class="hero-section">
+        <div class="hero-container">
+          <div class="hero-tagline">
+            <span class="tagline-dot"></span>
+            <span>Next-Gen Cloud Storage by Mayank Mandrai</span>
+          </div>
+          <h1 class="hero-heading">
+            Store, Share &amp; Stream <br>
+            <span class="text-gradient">Without Limits or Friction</span>
+          </h1>
+          <p class="hero-subtext">
+            Upload single files, zip archives, or entire directory folders instantly. No sign-up complexity - just a @username and 4-digit PIN that works on any device 24/7.
+          </p>
+        </div>
+      </section>
+
+      <!-- Upload Zone Section -->
+      <section id="upload-section" class="section upload-section">
+        <div class="upload-panel">
+          
+          <!-- Dropzone Card -->
+          <div class="dropzone" id="main-dropzone">
+            <div class="dropzone-ambient-glow"></div>
+            <div class="dropzone-content">
+              <div class="dropzone-icon-ring">
+                <svg class="svg-icon svg-xl"><use href="#icon-cloud-upload"/></svg>
+              </div>
+              <h2 class="dropzone-title">Drag &amp; Drop Files or Select Below</h2>
+              <p class="dropzone-hint">Upload single files, zip archives, or entire directories with one click.</p>
+              
+              <!-- 3 Dedicated Upload Buttons Requested by User -->
+              <div class="upload-buttons-group">
+                <!-- 1. Files Upload -->
+                <button type="button" class="btn btn-primary" id="btn-select-files">
+                  <svg class="svg-icon"><use href="#icon-file"/></svg>
+                  <span>Upload Files</span>
+                </button>
+
+                <!-- 2. Zip Upload -->
+                <button type="button" class="btn btn-accent" id="btn-select-zip">
+                  <svg class="svg-icon"><use href="#icon-zip"/></svg>
+                  <span>Upload Zip</span>
+                </button>
+
+                <!-- 3. Dedicated Folder Upload Button -->
+                <button type="button" class="btn btn-outline" id="btn-select-folder">
+                  <svg class="svg-icon"><use href="#icon-folder"/></svg>
+                  <span>Upload Folder</span>
+                </button>
+              </div>
+
+              <!-- Hidden native file inputs -->
+              <input type="file" id="input-files" multiple style="display:none">
+              <input type="file" id="input-zip" accept=".zip,.tar,.gz,.rar,.7z" style="display:none">
+              <input type="file" id="input-folder" webkitdirectory directory multiple style="display:none">
+
+            </div>
+          </div>
+
+          <!-- Upload Options Bar (Timer & Retention Settings) -->
+          <div class="upload-options-bar">
+            <!-- Timer Config -->
+            <div class="option-control">
+              <div class="option-icon-label">
+                <svg class="svg-icon svg-sm"><use href="#icon-timer"/></svg>
+                <span>Download Wait Timer:</span>
+              </div>
+              <div class="pill-selectors" id="timer-selector">
+                <button type="button" class="pill-btn active" data-timer="0">Instant (0s)</button>
+                <button type="button" class="pill-btn" data-timer="5">5s</button>
+                <button type="button" class="pill-btn" data-timer="10">10s</button>
+                <button type="button" class="pill-btn" data-timer="15">15s</button>
+                <button type="button" class="pill-btn" data-timer="30">30s</button>
+              </div>
+            </div>
+
+            <!-- Retention Policy to prevent storage from filling up -->
+            <div class="option-control">
+              <div class="option-icon-label">
+                <svg class="svg-icon svg-sm"><use href="#icon-shield"/></svg>
+                <span>Storage Retention:</span>
+              </div>
+              <select id="select-retention" class="custom-select">
+                <option value="0">Permanent (Never Delete)</option>
+                <option value="1">Auto-clean in 24 Hours</option>
+                <option value="3">Auto-clean in 3 Days</option>
+                <option value="7">Auto-clean in 7 Days</option>
+                <option value="30">Auto-clean in 30 Days</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Active Upload Progress View (Hidden until upload begins) -->
+          <div id="upload-progress-panel" class="upload-progress-panel hidden">
+            <div class="progress-info-row">
+              <div class="progress-file-info">
+                <span class="live-dot"></span>
+                <strong id="progress-file-name">Uploading...</strong>
+              </div>
+              <span id="progress-percentage-text">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+            </div>
+            <div class="progress-details-row">
+              <span id="progress-status-speed">Streaming to Mstorage network...</span>
+              <span id="progress-status-size">0 KB</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- User's File Vault (Dashboard) -->
+      <section id="vault-section" class="section vault-section">
+        <div class="vault-container">
+          
+          <div class="vault-header">
+            <div class="vault-title-group">
+              <div class="section-icon-box">
+                <svg class="svg-icon"><use href="#icon-server"/></svg>
+              </div>
+              <div>
+                <h2 class="section-title">My File Vault</h2>
+                <p class="section-subtitle">Manage, share, and track all your uploaded files and folders.</p>
+              </div>
+            </div>
+
+            <!-- Vault Search & Filter -->
+            <div class="vault-controls">
+              <div class="search-input-wrap">
+                <svg class="svg-icon svg-sm search-icon"><circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></svg>
+                <input type="text" id="vault-search-input" placeholder="Search your files..." class="search-input">
+              </div>
+              <div class="storage-usage-pill" id="storage-usage-pill">
+                <span id="vault-storage-text">0 Files</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Files Grid / List -->
+          <div id="vault-files-grid" class="vault-grid">
+            <!-- Populated dynamically by app.js -->
+            <div class="empty-vault-state" id="empty-vault-state">
+              <svg class="svg-icon svg-xl"><use href="#icon-folder"/></svg>
+              <h3>No Files Uploaded Yet</h3>
+              <p>Upload a file, zip, or whole folder above to generate your instant share link.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Comparison Section: Mstorage vs Google Drive vs MediaFire -->
+      <section id="comparison-section" class="section comparison-section">
+        <div class="comparison-container">
+          
+          <div class="section-heading-center">
+            <span class="section-pill">Why We Are Better</span>
+            <h2 class="section-title">Mstorage vs Google Drive vs MediaFire</h2>
+            <p class="section-subtitle">A direct comparison of features, speed, privacy, and user experience.</p>
+          </div>
+
+          <!-- Comparison Table Cards -->
+          <div class="comparison-grid">
+            
+            <!-- Google Drive Card -->
+            <div class="comp-card comp-gdrive">
+              <div class="comp-card-header">
+                <h3>Google Drive</h3>
+                <span class="comp-tag comp-tag-neutral">Big Tech Cloud</span>
+              </div>
+              <ul class="comp-list">
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>15GB total cap shared with Gmail &amp; Photos</span>
+                </li>
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>Requires full Google Account &amp; complex sign-in</span>
+                </li>
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>Frequent "Quota Exceeded" &amp; large file virus warnings</span>
+                </li>
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>Zero custom download countdown timers</span>
+                </li>
+                <li class="comp-item neutral">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span>Clunky folder sharing workflow</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Mstorage WINNER Card -->
+            <div class="comp-card comp-mstorage highlight-glow">
+              <div class="comp-badge-winner">TOP RATED</div>
+              <div class="comp-card-header">
+                <div class="brand-text">
+                  <h3 class="text-gradient">Mstorage</h3>
+                  <span class="brand-badge">PRO</span>
+                </div>
+                <span class="comp-tag comp-tag-success">By Mayank Mandrai</span>
+              </div>
+              <ul class="comp-list">
+                <li class="comp-item positive">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span><strong>Zero Server Bloat</strong> - Unlimited feel with smart streaming</span>
+                </li>
+                <li class="comp-item positive">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span><strong>Instant 4-digit PIN</strong> - No email, no password fatigue</span>
+                </li>
+                <li class="comp-item positive">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span><strong>100% Ad-Free &amp; Zero Captchas</strong> - Direct clean stream</span>
+                </li>
+                <li class="comp-item positive">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span><strong>Dedicated Folder Upload</strong> - 1-click directory select</span>
+                </li>
+                <li class="comp-item positive">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span><strong>Custom Download Timers</strong> - Set 0s, 5s, 10s, 30s countdown</span>
+                </li>
+                <li class="comp-item positive">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span><strong>24/7 Cloud Ready</strong> - Instant multi-device sync anywhere</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- MediaFire Card -->
+            <div class="comp-card comp-mediafire">
+              <div class="comp-card-header">
+                <h3>MediaFire</h3>
+                <span class="comp-tag comp-tag-warning">Ad-Heavy Legacy</span>
+              </div>
+              <ul class="comp-list">
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>Heavy pop-ups, fake download buttons &amp; trackers</span>
+                </li>
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>10GB free cap with aggressive premium upselling</span>
+                </li>
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>Folder upload locked behind paid subscription</span>
+                </li>
+                <li class="comp-item negative">
+                  <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+                  <span>Annoying forced download wait screens filled with spam</span>
+                </li>
+                <li class="comp-item neutral">
+                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+                  <span>Basic link sharing</span>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- About Section & Developer Spotlight -->
+      <section id="about-section" class="section about-section">
+        <div class="about-container">
+          
+          <div class="developer-profile-card">
+            <div class="dev-avatar-box">
+              <div class="dev-avatar-inner">
+                <span class="dev-initials">MM</span>
+              </div>
+              <span class="dev-status-indicator" title="Creator &amp; Lead Architect"></span>
+            </div>
+
+            <div class="dev-info-content">
+              <div class="dev-role-badge">Lead Developer &amp; Creator</div>
+              <h2 class="dev-name">Mayank Mandrai</h2>
+              <p class="dev-bio">
+                Mstorage was conceived and engineered by <strong>Mayank Mandrai</strong> to eliminate the bloat, annoying advertising, and sign-in headaches of legacy cloud storage. Built with zero third-party dependencies, modern system security, custom SVG iconography, and ultra-high performance streaming architecture.
+              </p>
+              <div class="dev-stats-strip">
+                <div class="dev-stat">
+                  <span class="dev-stat-value">100%</span>
+                  <span class="dev-stat-label">Ad-Free &amp; Clean</span>
+                </div>
+                <div class="dev-stat">
+                  <span class="dev-stat-value">24/7</span>
+                  <span class="dev-stat-label">Online Ready</span>
+                </div>
+                <div class="dev-stat">
+                  <span class="dev-stat-value">0ms</span>
+                  <span class="dev-stat-label">No Delay Logic</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Architecture Highlights -->
+          <div class="about-features-grid">
+            <div class="about-feature-box">
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-lock"/></svg></div>
+              <h4>Frictionless PIN Security</h4>
+              <p>Forget complex passwords and OTPs. Claim your @username, choose a 4-digit PIN, and access your vault from any mobile, tablet, or PC worldwide.</p>
+            </div>
+            <div class="about-feature-box">
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-speed"/></svg></div>
+              <h4>Direct Network Streaming</h4>
+              <p>Files stream directly between clients and high-speed memory buffers, offering maximum download speeds bounded only by your network bandwidth.</p>
+            </div>
+            <div class="about-feature-box">
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-server"/></svg></div>
+              <h4>Safe Storage Guarantee</h4>
+              <p>Engineered to never overload your host server disk with configurable retention, instant manual purge, and zero bloat footprint.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Auth Modal (Login / Register with @username and 4-digit PIN) -->
+  <div id="auth-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <button id="btn-close-auth-modal" class="modal-close-btn" aria-label="Close">
+        <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+      </button>
+
+      <div class="modal-header">
+        <div class="modal-icon-badge">
+          <svg class="svg-icon"><use href="#icon-lock"/></svg>
+        </div>
+        <h3 id="auth-modal-title">Access Mstorage</h3>
+        <p id="auth-modal-subtitle">Enter your @username and 4-digit PIN to continue.</p>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active" type="button">Sign In</button>
+        <button id="tab-register" class="auth-tab" type="button">New Account</button>
+      </div>
+
+      <!-- Auth Form -->
+      <form id="auth-form" class="auth-form">
+        <div class="form-group">
+          <label for="input-username" class="form-label">Username</label>
+          <div class="input-with-icon">
+            <span class="input-prefix">@</span>
+            <input type="text" id="input-username" class="form-input" placeholder="yourname" required autocomplete="username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-pin" class="form-label">4-Digit Security PIN</label>
+          <div class="pin-input-box">
+            <input type="password" id="input-pin" class="form-input pin-input" maxlength="4" pattern="\d{4}" placeholder="••••" inputmode="numeric" required autocomplete="current-password">
+          </div>
+          <span class="form-hint">Enter your secret 4-digit numeric code (e.g. 1234)</span>
+        </div>
+
+        <button type="submit" id="btn-submit-auth" class="btn btn-primary btn-block btn-lg">
+          <span id="btn-auth-text">Sign In</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Share Modal (Link Copy & Native QR Code) -->
+  <div id="share-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <button id="btn-close-share-modal" class="modal-close-btn" aria-label="Close">
+        <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+      </button>
+
+      <div class="modal-header">
+        <div class="modal-icon-badge">
+          <svg class="svg-icon"><use href="#icon-copy"/></svg>
+        </div>
+        <h3 id="share-modal-title">Share File Link</h3>
+        <p>Anyone with this direct link can download your file.</p>
+      </div>
+
+      <!-- Share Link Copy Box -->
+      <div class="share-copy-box">
+        <input type="text" id="share-link-input" class="share-input" readonly>
+        <button id="btn-copy-share-url" class="btn btn-accent btn-sm">
+          <svg class="svg-icon svg-sm"><use href="#icon-copy"/></svg>
+          <span id="btn-copy-label">Copy</span>
+        </button>
+      </div>
+
+      <!-- Native SVG QR Code Display -->
+      <div class="qr-container">
+        <div class="qr-box" id="share-qr-target">
+          <!-- Rendered natively via qrcode-native.js -->
+        </div>
+        <p class="qr-hint">Scan with any mobile phone camera for instant download</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <div class="brand-link">
+          <div class="brand-icon-box">
+            <svg class="svg-icon"><use href="#icon-logo"/></svg>
+          </div>
+          <span class="brand-name">Mstorage</span>
+        </div>
+        <p class="footer-desc">
+          Ultra-fast, zero-bloat personal cloud storage created by <strong>Mayank Mandrai</strong>.
+        </p>
+      </div>
+
+      <div class="footer-meta">
+        <div class="footer-dev-credit">
+          <span>Architected &amp; Built with Precision by</span>
+          <strong>Mayank Mandrai</strong>
+        </div>
+        <div class="footer-rights">
+          &copy; 2026 Mstorage. All Rights Reserved. Pure Self-Contained Architecture.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts: Native QR Code Generator and App Core -->
+  <script src="/js/qrcode-native.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
