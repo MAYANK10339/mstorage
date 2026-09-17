@@ -430,12 +430,22 @@ app.get('/api/files/download/:id', (req, res) => {
     return res.status(404).send('Physical file missing from storage');
   }
 
-  // High-performance streaming download with resume/pause support
-  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
-  res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
-  
-  const filestream = fs.createReadStream(filePath);
-  filestream.pipe(res);
+  // Ultra-fast streaming download with exact Content-Length and Range support (Prevents browser 'resuming' delay)
+  try {
+    const stat = fs.statSync(filePath);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.download(filePath, file.name, (err) => {
+      if (err && !res.headersSent) {
+        console.error('Download stream error:', err);
+      }
+    });
+  } catch (err) {
+    console.error('File stat error:', err);
+    return res.download(filePath, file.name);
+  }
 });
 
 // Edit file metadata (name, timer, retention)

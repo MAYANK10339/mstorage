@@ -601,7 +601,9 @@
     el.vaultFilesGrid.querySelectorAll('.btn-download-direct').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
-        window.open(`/api/files/download/${id}`, '_blank');
+        const file = state.files.find(f => f.id === id);
+        triggerDirectDownload(`/api/files/download/${id}`, file ? file.name : '');
+        showToast('Starting instant download...', 'info');
       });
     });
 
@@ -847,13 +849,24 @@
     }, 1000);
   }
 
+  function triggerDirectDownload(url, filename) {
+    const a = document.createElement('a');
+    a.href = url;
+    if (filename) a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 1500);
+  }
+
   function unlockDownloadButton(fileId) {
     el.btnTriggerDownload.disabled = false;
     el.btnDlLabel.textContent = 'Download Now';
 
     el.btnTriggerDownload.onclick = () => {
-      window.location.href = `/api/files/download/${fileId}`;
-      showToast('Starting high-speed stream download...', 'info');
+      const fileName = state.activeDownloadFile ? state.activeDownloadFile.name : '';
+      triggerDirectDownload(`/api/files/download/${fileId}`, fileName);
+      showToast('Starting instant direct download...', 'info');
       const currentDl = parseInt(el.dlDownloadsCount.textContent, 10) || 0;
       el.dlDownloadsCount.textContent = currentDl + 1;
     };
