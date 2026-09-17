@@ -1,7 +1,7 @@
 /**
- * MSTORAGE - CLIENT CORE APPLICATION
+ * MSTORAGE - ULTRA-SMOOTH CLIENT CORE APPLICATION
  * Developer & Creator: Mayank Mandrai
- * 100% Native Architecture - Zero Third Party Dependencies - Zero Emojis
+ * 100% Native Architecture - Zero Browser Alerts - Pure Direct Link Sharing
  */
 
 (function () {
@@ -14,7 +14,8 @@
     currentTimer: 0,
     currentRetention: 0,
     files: [],
-    activeDownloadFile: null
+    activeDownloadFile: null,
+    pendingDeleteId: null
   };
 
   // DOM Elements
@@ -73,16 +74,21 @@
     btnTriggerDownload: document.getElementById('btn-trigger-download'),
     btnDlLabel: document.getElementById('btn-dl-label'),
     btnCopyPublicLink: document.getElementById('btn-copy-public-link'),
-    btnShowPublicQr: document.getElementById('btn-show-public-qr'),
+    btnPublicCopyText: document.getElementById('btn-public-copy-text'),
     dlFileIcon: document.getElementById('dl-file-icon'),
 
-    // Share Modal
+    // Share Modal (Pure Direct Link Sharing)
     shareModal: document.getElementById('share-modal'),
     btnCloseShareModal: document.getElementById('btn-close-share-modal'),
     shareLinkInput: document.getElementById('share-link-input'),
     btnCopyShareUrl: document.getElementById('btn-copy-share-url'),
     btnCopyLabel: document.getElementById('btn-copy-label'),
-    shareQrTarget: document.getElementById('share-qr-target'),
+    shareOpenLinkBtn: document.getElementById('share-open-link-btn'),
+
+    // In-App Confirm Modal (Zero native alerts)
+    confirmModal: document.getElementById('confirm-modal'),
+    btnConfirmCancel: document.getElementById('btn-confirm-cancel'),
+    btnConfirmDelete: document.getElementById('btn-confirm-delete'),
 
     // Toasts
     toastContainer: document.getElementById('toast-container')
@@ -108,12 +114,14 @@
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
+  // Smooth floating toast notification (Zero Browser Alerts)
   function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     
     let icon = '#icon-check';
     if (type === 'error') icon = '#icon-cross';
+    else if (type === 'link') icon = '#icon-link';
 
     toast.innerHTML = `
       <svg class="svg-icon svg-sm"><use href="${icon}"/></svg>
@@ -123,10 +131,10 @@
     el.toastContainer.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 4000);
+      toast.style.transform = 'translateY(8px)';
+      toast.style.transition = 'all 0.18s ease-out';
+      setTimeout(() => toast.remove(), 200);
+    }, 3200);
   }
 
   function escapeHtml(str) {
@@ -261,7 +269,7 @@
   // FILE UPLOADS (Files, Zip, Folder)
   // -----------------------------------------------------------------
   function setupUploadHandlers() {
-    // Buttons triggering inputs
+    // 3 Distinct Upload Buttons
     el.btnSelectFiles.addEventListener('click', () => {
       if (ensureAuth()) el.inputFiles.click();
     });
@@ -274,7 +282,7 @@
       if (ensureAuth()) el.inputFolder.click();
     });
 
-    // File input changes
+    // Inputs
     el.inputFiles.addEventListener('change', (e) => {
       if (e.target.files.length) uploadFileList(e.target.files, 'file');
     });
@@ -390,18 +398,17 @@
             showToast('Upload completed successfully!', 'success');
             setTimeout(() => {
               el.uploadProgressPanel.classList.add('hidden');
-            }, 1000);
+            }, 800);
 
-            // If files returned, open share modal for the first uploaded item
             if (data.files && data.files.length > 0) {
               openShareModal(data.files[0]);
             }
             loadUserFiles();
           } catch (e) {
-            showToast('Upload finished with unexpected response', 'info');
+            showToast('Upload completed', 'info');
           }
         } else {
-          showToast('Upload failed. Please check network and try again.', 'error');
+          showToast('Upload failed. Please check connection and try again.', 'error');
           el.uploadProgressPanel.classList.add('hidden');
         }
 
@@ -496,8 +503,8 @@
             </div>
 
             <div class="action-icon-buttons">
-              <button class="icon-btn btn-share-item" title="Share &amp; QR Code" data-id="${escapeHtml(f.id)}">
-                <svg class="svg-icon svg-sm"><use href="#icon-copy"/></svg>
+              <button class="icon-btn btn-share-item" title="Copy Direct Share Link" data-id="${escapeHtml(f.id)}">
+                <svg class="svg-icon svg-sm"><use href="#icon-link"/></svg>
               </button>
               <button class="icon-btn btn-download-direct" title="Direct Download" data-id="${escapeHtml(f.id)}">
                 <svg class="svg-icon svg-sm"><use href="#icon-download"/></svg>
@@ -516,7 +523,14 @@
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         const file = state.files.find(f => f.id === id);
-        if (file) openShareModal(file);
+        if (file) {
+          // Instant copy to clipboard and open clean link modal
+          const shareUrl = `${window.location.origin}/?d=${file.id}`;
+          navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast('Direct share link copied to clipboard!', 'link');
+          }).catch(() => {});
+          openShareModal(file);
+        }
       });
     });
 
@@ -530,15 +544,27 @@
     el.vaultFilesGrid.querySelectorAll('.btn-delete').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
-        deleteFile(id);
+        promptDeleteFile(id);
       });
     });
   }
 
-  async function deleteFile(id) {
-    if (!confirm('Are you sure you want to delete this file from your Mstorage vault? This frees up storage permanently.')) {
-      return;
-    }
+  // Smooth In-App Delete Confirmation (Zero Browser confirm() Popups)
+  function promptDeleteFile(id) {
+    state.pendingDeleteId = id;
+    el.confirmModal.classList.remove('hidden');
+  }
+
+  function closeConfirmModal() {
+    state.pendingDeleteId = null;
+    el.confirmModal.classList.add('hidden');
+  }
+
+  async function executePendingDelete() {
+    const id = state.pendingDeleteId;
+    if (!id) return;
+
+    closeConfirmModal();
 
     try {
       const res = await fetch(`/api/files/${id}`, {
@@ -558,18 +584,13 @@
   }
 
   // -----------------------------------------------------------------
-  // SHARE MODAL & NATIVE QR CODE (Zero External APIs)
+  // PURE DIRECT LINK SHARING (No QR Code Clutter)
   // -----------------------------------------------------------------
   function openShareModal(file) {
     const shareUrl = `${window.location.origin}/?d=${file.id}`;
     el.shareLinkInput.value = shareUrl;
-    el.btnCopyLabel.textContent = 'Copy';
-
-    // Generate pure SVG QR Code using native client library
-    if (window.NativeQRCode) {
-      const svgMarkup = window.NativeQRCode.generateSVG(shareUrl, 160);
-      el.shareQrTarget.innerHTML = svgMarkup;
-    }
+    el.btnCopyLabel.textContent = 'Copy Link';
+    el.shareOpenLinkBtn.href = shareUrl;
 
     el.shareModal.classList.remove('hidden');
   }
@@ -621,19 +642,17 @@
       if (timerSeconds > 0) {
         runDownloadTimer(timerSeconds, file.id);
       } else {
-        // Instant download ready
         unlockDownloadButton(file.id);
       }
 
-      // Public Copy Link button
+      // Public Copy Direct Link button
       el.btnCopyPublicLink.addEventListener('click', () => {
         navigator.clipboard.writeText(window.location.href);
-        showToast('Download link copied to clipboard', 'success');
-      });
-
-      // Public QR code
-      el.btnShowPublicQr.addEventListener('click', () => {
-        openShareModal(file);
+        el.btnPublicCopyText.textContent = 'Link Copied!';
+        showToast('Direct download link copied to clipboard!', 'link');
+        setTimeout(() => {
+          el.btnPublicCopyText.textContent = 'Copy Direct Link';
+        }, 2200);
       });
 
     } catch (err) {
@@ -648,7 +667,7 @@
     el.btnDlLabel.textContent = `Wait for Timer (${seconds}s)...`;
 
     let remaining = seconds;
-    const totalCircumference = 283; // 2 * PI * 45 ≈ 282.7
+    const totalCircumference = 283;
 
     el.dlTimerSeconds.textContent = remaining;
     el.dlTimerBar.style.strokeDashoffset = '0';
@@ -666,20 +685,18 @@
         setTimeout(() => {
           el.dlTimerContainer.classList.add('hidden');
           unlockDownloadButton(fileId);
-        }, 400);
+        }, 300);
       }
     }, 1000);
   }
 
   function unlockDownloadButton(fileId) {
     el.btnTriggerDownload.disabled = false;
-    el.btnTriggerDownload.classList.add('highlight-pulse');
     el.btnDlLabel.textContent = 'Download Now';
 
     el.btnTriggerDownload.onclick = () => {
       window.location.href = `/api/files/download/${fileId}`;
       showToast('Starting high-speed stream download...', 'info');
-      // Increment local download count visual
       const currentDl = parseInt(el.dlDownloadsCount.textContent, 10) || 0;
       el.dlDownloadsCount.textContent = currentDl + 1;
     };
@@ -707,14 +724,21 @@
     });
     el.btnCloseShareModal.addEventListener('click', closeShareModal);
 
-    // Copy share URL button
+    // In-App Confirm modal buttons
+    el.btnConfirmCancel.addEventListener('click', closeConfirmModal);
+    el.btnConfirmDelete.addEventListener('click', executePendingDelete);
+    el.confirmModal.addEventListener('click', (e) => {
+      if (e.target === el.confirmModal) closeConfirmModal();
+    });
+
+    // Copy direct share link button
     el.btnCopyShareUrl.addEventListener('click', () => {
       navigator.clipboard.writeText(el.shareLinkInput.value);
       el.btnCopyLabel.textContent = 'Copied!';
-      showToast('Share link copied to clipboard', 'success');
+      showToast('Share link copied to clipboard!', 'link');
       setTimeout(() => {
-        el.btnCopyLabel.textContent = 'Copy';
-      }, 2500);
+        el.btnCopyLabel.textContent = 'Copy Link';
+      }, 2000);
     });
 
     // Vault search input
