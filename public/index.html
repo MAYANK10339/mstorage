@@ -112,6 +112,12 @@
         <line x1="6" y1="6" x2="6.01" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         <line x1="6" y1="18" x2="6.01" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </g>
+      <!-- 3 Dots More Vertical Icon -->
+      <g id="icon-dots-vertical">
+        <circle cx="12" cy="5" r="2" fill="currentColor"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor"/>
+        <circle cx="12" cy="19" r="2" fill="currentColor"/>
+      </g>
     </defs>
   </svg>
 
@@ -160,9 +166,94 @@
             <span>Login / Register</span>
           </button>
         </div>
+
+        <!-- 3-Dots Mobile Menu Trigger Button -->
+        <button id="btn-mobile-more" class="btn-mobile-more" aria-label="Open Mobile Menu" title="Menu &amp; Options">
+          <svg class="svg-icon"><use href="#icon-dots-vertical"/></svg>
+        </button>
       </div>
     </div>
   </header>
+
+  <!-- Mobile 3-Dots Slide-out Drawer / Menu -->
+  <div id="mobile-menu-drawer" class="mobile-drawer-backdrop hidden" aria-hidden="true">
+    <div class="mobile-drawer-card">
+      <div class="drawer-top-bar">
+        <div class="drawer-brand">
+          <div class="brand-icon-box" style="width: 34px; height: 34px;">
+            <svg class="svg-icon"><use href="#icon-logo"/></svg>
+          </div>
+          <div>
+            <div class="brand-text">
+              <span class="brand-name" style="font-size: 1.15rem;">Mstorage</span>
+              <span class="brand-badge">PRO</span>
+            </div>
+            <span class="drawer-dev-tag">By Mayank Mandrai</span>
+          </div>
+        </div>
+        <button id="btn-close-mobile-drawer" class="drawer-close-btn" aria-label="Close Menu">
+          <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+        </button>
+      </div>
+
+      <!-- Drawer User / Profile Card -->
+      <div id="drawer-auth-section" class="drawer-auth-box">
+        <!-- Injected dynamically by app.js: Profile details + login/logout -->
+      </div>
+
+      <!-- Drawer Navigation Options List -->
+      <nav class="drawer-nav-menu" aria-label="Mobile Drawer Navigation">
+        <a href="#upload-section" class="drawer-nav-link" data-drawer-nav="upload">
+          <div class="drawer-nav-icon">
+            <svg class="svg-icon svg-sm"><use href="#icon-cloud-upload"/></svg>
+          </div>
+          <div class="drawer-nav-text">
+            <strong>Upload Files &amp; Folders</strong>
+            <span>Single files, zip archives, or folders</span>
+          </div>
+        </a>
+
+        <a href="#vault-section" class="drawer-nav-link" data-drawer-nav="vault">
+          <div class="drawer-nav-icon">
+            <svg class="svg-icon svg-sm"><use href="#icon-server"/></svg>
+          </div>
+          <div class="drawer-nav-text">
+            <strong>My File Vault</strong>
+            <span>Manage, edit settings &amp; replace files</span>
+          </div>
+        </a>
+
+        <a href="#comparison-section" class="drawer-nav-link" data-drawer-nav="compare">
+          <div class="drawer-nav-icon">
+            <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
+          </div>
+          <div class="drawer-nav-text">
+            <strong>Compare Clouds</strong>
+            <span>Mstorage vs Google Drive vs MediaFire</span>
+          </div>
+        </a>
+
+        <a href="#about-section" class="drawer-nav-link" data-drawer-nav="about">
+          <div class="drawer-nav-icon">
+            <svg class="svg-icon svg-sm"><use href="#icon-user"/></svg>
+          </div>
+          <div class="drawer-nav-text">
+            <strong>About Developer</strong>
+            <span>Mayank Mandrai • Lead Creator</span>
+          </div>
+        </a>
+      </nav>
+
+      <!-- Drawer Footer Info -->
+      <div class="drawer-footer">
+        <div class="drawer-status-chip">
+          <span class="live-dot"></span>
+          <span>Cloud Storage 24/7 Active • 0 Delay</span>
+        </div>
+        <span class="drawer-version">&copy; 2026 Mstorage PRO • Mayank Mandrai</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Main Content Wrapper -->
   <main class="main-content">

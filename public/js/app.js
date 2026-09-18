@@ -88,6 +88,12 @@
     dlFolderItemsList: document.getElementById('dl-folder-items-list'),
     mobileBottomNav: document.getElementById('mobile-bottom-nav'),
 
+    // 3-Dots Mobile Menu Drawer
+    btnMobileMore: document.getElementById('btn-mobile-more'),
+    mobileMenuDrawer: document.getElementById('mobile-menu-drawer'),
+    btnCloseMobileDrawer: document.getElementById('btn-close-mobile-drawer'),
+    drawerAuthSection: document.getElementById('drawer-auth-section'),
+
     // Share Modal (Pure Direct Link Sharing)
     shareModal: document.getElementById('share-modal'),
     btnCloseShareModal: document.getElementById('btn-close-share-modal'),
@@ -220,6 +226,73 @@
       if (btnOpen) {
         btnOpen.addEventListener('click', () => openAuthModal('login'));
       }
+    }
+
+    updateDrawerAuth();
+  }
+
+  function updateDrawerAuth() {
+    if (!el.drawerAuthSection) return;
+    if (state.token && state.user) {
+      el.drawerAuthSection.innerHTML = `
+        <div class="drawer-user-card">
+          <div class="drawer-user-info">
+            <div class="user-avatar-circle" style="width: 36px; height: 36px; font-size: 0.95rem;">
+              ${escapeHtml(state.user.username.charAt(0).toUpperCase())}
+            </div>
+            <div>
+              <div class="drawer-user-name">${escapeHtml(state.user.displayUsername)}</div>
+              <span class="drawer-user-badge">Signed In • PRO Vault</span>
+            </div>
+          </div>
+          <button id="btn-drawer-logout" class="btn btn-outline btn-sm btn-block" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.35); justify-content: center; margin-top: 10px;">
+            <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      `;
+      const btnLogout = document.getElementById('btn-drawer-logout');
+      if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+          closeMobileDrawer();
+          handleLogout();
+        });
+      }
+    } else {
+      el.drawerAuthSection.innerHTML = `
+        <div class="drawer-guest-card">
+          <div class="drawer-guest-text">
+            <strong>Welcome to Mstorage</strong>
+            <span>Login or register with your @username &amp; 4-digit PIN.</span>
+          </div>
+          <button id="btn-drawer-login" class="btn btn-primary btn-sm btn-block" style="justify-content: center; margin-top: 10px;">
+            <svg class="svg-icon svg-sm"><use href="#icon-lock"/></svg>
+            <span>Login / Register</span>
+          </button>
+        </div>
+      `;
+      const btnLogin = document.getElementById('btn-drawer-login');
+      if (btnLogin) {
+        btnLogin.addEventListener('click', () => {
+          closeMobileDrawer();
+          openAuthModal('login');
+        });
+      }
+    }
+  }
+
+  function openMobileDrawer() {
+    updateDrawerAuth();
+    if (el.mobileMenuDrawer) {
+      el.mobileMenuDrawer.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeMobileDrawer() {
+    if (el.mobileMenuDrawer) {
+      el.mobileMenuDrawer.classList.add('hidden');
+      document.body.style.overflow = '';
     }
   }
 
@@ -1041,6 +1114,24 @@
 
         sections.forEach(s => observer.observe(s));
       }
+    }
+
+    // 3-Dots Mobile Menu Drawer Trigger & Close
+    if (el.btnMobileMore) {
+      el.btnMobileMore.addEventListener('click', openMobileDrawer);
+    }
+    if (el.btnCloseMobileDrawer) {
+      el.btnCloseMobileDrawer.addEventListener('click', closeMobileDrawer);
+    }
+    if (el.mobileMenuDrawer) {
+      el.mobileMenuDrawer.addEventListener('click', (e) => {
+        if (e.target === el.mobileMenuDrawer) closeMobileDrawer();
+      });
+      el.mobileMenuDrawer.querySelectorAll('.drawer-nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          closeMobileDrawer();
+        });
+      });
     }
 
     // If user is logged in and not on public download route, load files

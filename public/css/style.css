@@ -1767,6 +1767,228 @@ button, input, select {
   transform: scale(0.92);
 }
 
+/* 3-Dots Mobile Menu Trigger Button */
+.btn-mobile-more {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-mobile-more:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-mobile-more:active {
+  transform: scale(0.92);
+}
+
+/* 3-Dots Mobile Slide-Out Menu Drawer */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  background: rgba(4, 7, 15, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn 0.18s ease-out;
+}
+
+.mobile-drawer-card {
+  width: 86%;
+  max-width: 340px;
+  height: 100%;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-glow);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 18px;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.75);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: slideDrawer 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDrawer {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.drawer-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+}
+
+.drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drawer-dev-tag {
+  font-size: 0.74rem;
+  color: var(--text-subtle);
+}
+
+.drawer-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.drawer-close-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.drawer-auth-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.drawer-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drawer-user-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.drawer-user-badge {
+  font-size: 0.72rem;
+  color: #34d399;
+  font-weight: 600;
+}
+
+.drawer-guest-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.drawer-guest-text strong {
+  font-size: 0.92rem;
+  color: #fff;
+}
+
+.drawer-nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.drawer-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.drawer-nav-link:hover, .drawer-nav-link:active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  transform: translateX(3px);
+}
+
+.drawer-nav-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.drawer-nav-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.drawer-nav-text strong {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.drawer-nav-text span {
+  font-size: 0.74rem;
+  color: var(--text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.drawer-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.drawer-version {
+  font-size: 0.7rem;
+  color: var(--text-subtle);
+}
+
 /* Hide mobile bottom nav on desktop screens */
 @media (min-width: 769px) {
   .mobile-bottom-nav {
@@ -1845,36 +2067,48 @@ button, input, select {
     padding: 1px 5px;
   }
 
-  /* Desktop nav hidden on mobile; bottom nav takes over */
+  /* Desktop nav hidden on mobile; bottom nav and 3-dots drawer take over */
   .header-actions .nav-links {
     display: none !important;
   }
 
-  /* Compact creator chip in header on mobile */
+  /* Creator badge hidden on mobile header to give clean breathing room to Brand, Login/Profile & 3-dots */
   .creator-badge {
-    padding: 4px 8px;
-    font-size: 0.74rem;
-    gap: 5px;
+    display: none !important;
   }
 
-  .creator-badge-label {
-    display: none;
+  /* 3-Dots Mobile Menu Trigger Button (Visible on mobile) */
+  .btn-mobile-more {
+    display: flex !important;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .auth-state-box .btn {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    min-height: 38px;
   }
 
   .user-profile-pill {
     padding: 3px 8px 3px 4px;
     gap: 6px;
+    max-width: 130px;
   }
 
   .user-avatar-circle {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     font-size: 0.72rem;
   }
 
   .user-handle {
     font-size: 0.8rem;
-    max-width: 80px;
+    max-width: 75px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1882,12 +2116,12 @@ button, input, select {
 
   /* Main content spacing for bottom nav */
   .main-content {
-    padding: 16px 12px 90px 12px;
+    padding: 16px 12px 92px 12px;
   }
 
   /* Hero adjustments */
   .hero-section {
-    padding: 12px 0 26px 0;
+    padding: 12px 0 24px 0;
   }
 
   .hero-tagline {
@@ -1912,7 +2146,7 @@ button, input, select {
 
   /* Upload section & dropzone */
   .upload-section {
-    margin-bottom: 38px;
+    margin-bottom: 36px;
   }
 
   .upload-panel {
@@ -1921,7 +2155,7 @@ button, input, select {
   }
 
   .dropzone {
-    padding: 24px 12px;
+    padding: 24px 14px;
     border-radius: var(--radius-md);
   }
 
@@ -1941,6 +2175,7 @@ button, input, select {
   }
 
   .upload-buttons-group {
+    display: flex;
     flex-direction: column;
     width: 100%;
     gap: 10px;
@@ -1948,9 +2183,10 @@ button, input, select {
 
   .upload-buttons-group .btn {
     width: 100%;
-    min-height: 46px;
+    min-height: 48px;
     font-size: 0.94rem;
     justify-content: center;
+    padding: 10px 16px;
   }
 
   .upload-options-bar {
@@ -1972,26 +2208,29 @@ button, input, select {
     font-size: 0.82rem;
   }
 
+  /* Perfect 5-column grid fit for expiry timer pills */
   .pill-selectors {
     width: 100%;
-    display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
     padding: 3px;
-  }
-
-  .pill-selectors::-webkit-scrollbar {
-    display: none;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
   }
 
   .pill-btn {
-    flex: 1 0 auto;
-    padding: 7px 10px;
-    font-size: 0.78rem;
+    width: 100%;
+    padding: 8px 2px;
+    font-size: 0.72rem;
+    font-weight: 600;
     text-align: center;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 6px;
+    box-sizing: border-box;
   }
 
   .custom-select {
@@ -2102,19 +2341,40 @@ button, input, select {
     gap: 6px;
   }
 
+  /* All file card action buttons fit seamlessly */
   .file-card-actions {
-    flex-wrap: wrap;
-    gap: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .file-card-actions .btn-share {
+    flex: 1;
+    min-height: 38px;
+    font-size: 0.82rem;
+    padding: 6px 10px;
+    justify-content: center;
+    white-space: nowrap;
   }
 
   .action-icon-buttons {
+    display: flex;
+    align-items: center;
     gap: 6px;
+    flex-shrink: 0;
   }
 
-  .icon-btn {
-    width: 36px;
-    height: 36px;
+  .action-icon-buttons .icon-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
   }
 
   /* Comparison section */
@@ -2266,7 +2526,7 @@ button, input, select {
 
   .download-sub-actions .btn {
     width: 100%;
-    min-height: 42px;
+    min-height: 44px;
     justify-content: center;
   }
 
@@ -2337,9 +2597,21 @@ button, input, select {
     gap: 8px;
   }
 
+  .edit-modal-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
   .confirm-modal-actions {
     flex-direction: column-reverse;
     gap: 8px;
+  }
+
+  .confirm-modal-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 
   /* Toast Notification positioning on mobile */
@@ -2377,7 +2649,8 @@ button, input, select {
 /* 3. ULTRA-NARROW MOBILE PHONES (max-width: 380px) */
 @media (max-width: 380px) {
   .header-container {
-    padding: 6px 10px;
+    padding: 6px 8px;
+    gap: 8px;
   }
 
   .brand-icon-box {
@@ -2386,24 +2659,38 @@ button, input, select {
   }
 
   .brand-name {
-    font-size: 1.05rem;
+    font-size: 1.02rem;
   }
 
-  .creator-badge {
+  .brand-badge {
     display: none;
   }
 
+  .creator-badge {
+    display: none !important;
+  }
+
+  .btn-mobile-more {
+    width: 34px;
+    height: 34px;
+  }
+
   .hero-heading {
-    font-size: 1.65rem;
+    font-size: 1.6rem;
   }
 
   .option-icon-label {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+  }
+
+  .pill-selectors {
+    gap: 2px;
+    padding: 2px;
   }
 
   .pill-btn {
-    padding: 5px 7px;
-    font-size: 0.72rem;
+    padding: 7px 1px;
+    font-size: 0.68rem;
   }
 
   .download-title {
