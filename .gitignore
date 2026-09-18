@@ -12,9 +12,9 @@ yarn-error.log*
 storage/uploads/*
 !storage/uploads/.gitkeep
 
-# Local database (generated at runtime)
-data/mstorage_db.json*
-!data/.gitkeep
+# Local database temp files
+data/*.tmp
+data/*.bak
 
 # System files
 .DS_Store

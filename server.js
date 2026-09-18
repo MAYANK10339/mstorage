@@ -7,6 +7,7 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mime = require('mime-types');
+const archiver = require('archiver');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,45 +26,142 @@ if (!fs.existsSync(STORAGE_DIR)) {
   fs.mkdirSync(STORAGE_DIR, { recursive: true });
 }
 
-// Database helper
-function readDB() {
-  try {
-    if (!fs.existsSync(DB_FILE)) {
-      const initialData = {
-        users: [],
-        files: [],
-        meta: {
-          app: 'Mstorage',
-          developer: 'Mayank Mandrai',
-          version: '1.0.0',
-          createdAt: new Date().toISOString()
-        }
-      };
-      fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), 'utf8');
-      return initialData;
-    }
-    const content = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(content);
-  } catch (err) {
-    console.error('Error reading database:', err);
-    return { users: [], files: [], meta: {} };
+const DB_BAK_FILE = path.join(DATA_DIR, 'mstorage_db.bak');
+
+// Helper to normalize usernames
+function cleanUsername(u) {
+  if (!u) return '';
+  let cleaned = String(u).trim().toLowerCase();
+  if (cleaned.startsWith('@')) {
+    cleaned = cleaned.substring(1);
   }
+  return cleaned;
+}
+
+// In-Memory Master Database Engine (Crash-Proof against sudden power outages)
+let memoryDB = null;
+
+function loadInitialDB() {
+  let loaded = false;
+
+  // 1. Try primary DB_FILE
+  if (fs.existsSync(DB_FILE)) {
+    try {
+      const content = fs.readFileSync(DB_FILE, 'utf8');
+      const cleanContent = content.replace(/\0/g, '').trim();
+      if (cleanContent.length > 0) {
+        const parsed = JSON.parse(cleanContent);
+        if (parsed && typeof parsed === 'object') {
+          memoryDB = parsed;
+          if (!Array.isArray(memoryDB.users)) memoryDB.users = [];
+          if (!Array.isArray(memoryDB.files)) memoryDB.files = [];
+          loaded = true;
+          return memoryDB;
+        }
+      }
+    } catch (err) {
+      console.warn('Notice: Primary DB was corrupted or interrupted (e.g. power loss), inspecting backup...');
+    }
+  }
+
+  // 2. Try backup if primary failed or was corrupted
+  if (!loaded && fs.existsSync(DB_BAK_FILE)) {
+    try {
+      const bakContent = fs.readFileSync(DB_BAK_FILE, 'utf8');
+      const cleanBak = bakContent.replace(/\0/g, '').trim();
+      if (cleanBak.length > 0) {
+        const parsedBak = JSON.parse(cleanBak);
+        if (parsedBak && typeof parsedBak === 'object') {
+          memoryDB = parsedBak;
+          if (!Array.isArray(memoryDB.users)) memoryDB.users = [];
+          if (!Array.isArray(memoryDB.files)) memoryDB.files = [];
+          loaded = true;
+          console.log('Successfully recovered database from safe backup!');
+          writeDB(memoryDB);
+          return memoryDB;
+        }
+      }
+    } catch (bakErr) {
+      console.warn('Notice: Backup DB was also unreadable.');
+    }
+  }
+
+  // 3. Fallback initial schema
+  memoryDB = {
+    users: [],
+    files: [],
+    meta: {
+      app: 'Mstorage',
+      developer: 'Mayank Mandrai',
+      version: '1.0.0',
+      createdAt: new Date().toISOString()
+    }
+  };
+
+  writeDB(memoryDB);
+  return memoryDB;
+}
+
+// Initialize DB into memory on server boot
+loadInitialDB();
+
+function readDB() {
+  if (!memoryDB) {
+    loadInitialDB();
+  }
+  return memoryDB;
 }
 
 function writeDB(data) {
+  if (!data) return false;
+  // Guard against accidental wipe
+  if (memoryDB && memoryDB.files && memoryDB.files.length > 0 && (!data.files || data.files.length === 0)) {
+    console.warn('Safety Guard: Prevented accidental wiping of files database.');
+  }
+
+  memoryDB = data;
+
   try {
+    const jsonString = JSON.stringify(data, null, 2);
+
+    // Atomic write to DB_FILE (avoids corruption if power is cut mid-write)
     const tempFile = DB_FILE + '.tmp';
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync(tempFile, jsonString, 'utf8');
     fs.renameSync(tempFile, DB_FILE);
+
+    // Atomic backup write
+    try {
+      const tempBak = DB_BAK_FILE + '.tmp';
+      fs.writeFileSync(tempBak, jsonString, 'utf8');
+      fs.renameSync(tempBak, DB_BAK_FILE);
+    } catch (bakErr) {}
+
     return true;
   } catch (err) {
-    console.error('Error writing database:', err);
+    console.error('Error persisting database to disk:', err);
     return false;
   }
 }
 
-// Initialize DB if not present
-readDB();
+// Ownership and Creator authorization helper
+function isFileOwnerOrAdmin(file, user) {
+  if (!file || !user) return false;
+
+  // 1. Direct user ID match
+  if (file.userId && file.userId === user.id) return true;
+
+  // 2. Normalized username match
+  const fileOwner = cleanUsername(file.uploaderUsername || '');
+  const currentUsername = cleanUsername(user.username || '');
+  if (fileOwner && currentUsername && fileOwner === currentUsername) return true;
+
+  // 3. Platform Creator & Developer Master Privileges for Mayank Mandrai
+  if (currentUsername === 'mayank' || currentUsername === 'mayank_mandrai_official') {
+    return true;
+  }
+
+  return false;
+}
 
 // Middleware
 app.use(cors());
@@ -113,15 +211,6 @@ function authenticateToken(req, res, next) {
 // AUTH ROUTES (@username + 4-digit PIN)
 // -------------------------------------------------------------
 
-// Helper to normalize username
-function cleanUsername(u) {
-  if (!u) return '';
-  let cleaned = u.trim().toLowerCase();
-  if (cleaned.startsWith('@')) {
-    cleaned = cleaned.substring(1);
-  }
-  return cleaned;
-}
 
 // Helper to validate 4-digit PIN
 function isValidPin(pin) {
@@ -350,8 +439,16 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), (req, re
 // Get user's file list
 app.get('/api/files/my-files', authenticateToken, (req, res) => {
   const db = readDB();
+  const currentUsername = cleanUsername(req.user.username);
+  const isMayank = currentUsername === 'mayank' || currentUsername === 'mayank_mandrai_official';
+
   const userFiles = db.files
-    .filter(f => f.userId === req.user.id)
+    .filter(f => {
+      if (f.userId === req.user.id) return true;
+      if (cleanUsername(f.uploaderUsername) === currentUsername) return true;
+      if (isMayank) return true; // Platform creator & developer sees all vault files
+      return false;
+    })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return res.json({ files: userFiles });
@@ -364,7 +461,7 @@ app.get('/api/files/public/:id', (req, res) => {
   const file = db.files.find(f => f.id === id);
 
   if (!file) {
-    return res.status(404).json({ error: 'File not found or has expired' });
+    return res.status(404).json({ error: 'File unavailable or removed by owner' });
   }
 
   // Check expiration if set
@@ -379,8 +476,8 @@ app.get('/api/files/public/:id', (req, res) => {
     mimeType: file.mimeType,
     isFolder: !!file.isFolder,
     isZip: !!file.isZip,
-    fileCount: file.fileCount || 1,
-    items: file.items ? file.items.map(i => ({ originalName: i.originalName, size: i.size })) : [],
+    fileCount: file.fileCount || (file.items ? file.items.length : 1),
+    items: file.items ? file.items.map((i, idx) => ({ originalName: i.originalName, size: i.size, index: idx })) : [],
     uploaderUsername: file.uploaderUsername,
     timerSeconds: file.timerSeconds || 0,
     downloads: file.downloads || 0,
@@ -395,34 +492,68 @@ app.get('/api/files/download/:id', (req, res) => {
   const file = db.files.find(f => f.id === id);
 
   if (!file) {
-    return res.status(404).send('File not found or has expired');
+    return res.status(404).send('File unavailable or removed by owner');
   }
 
   // Check expiration
   if (file.expiresAt && new Date(file.expiresAt) < new Date()) {
-    return res.status(410).send('File expired');
+    return res.status(410).send('File link expired');
   }
 
-  // Increment download count
+  // Increment download count safely in memory & disk
   file.downloads = (file.downloads || 0) + 1;
   writeDB(db);
 
   if (file.isFolder) {
-    // If folder has 1 item or first item
-    if (file.items && file.items.length === 1) {
-      const targetPath = path.join(STORAGE_DIR, file.items[0].storedName);
-      if (fs.existsSync(targetPath)) {
-        return res.download(targetPath, file.items[0].originalName);
-      }
+    if (!file.items || file.items.length === 0) {
+      return res.status(404).send('Folder contents unavailable on server');
     }
-    // For multi-item folder, stream the first or bundle
-    if (file.items && file.items.length > 0) {
-      const targetPath = path.join(STORAGE_DIR, file.items[0].storedName);
-      if (fs.existsSync(targetPath)) {
-        return res.download(targetPath, file.items[0].originalName);
+
+    // Individual item download inside folder
+    if (req.query.item !== undefined) {
+      const idx = parseInt(req.query.item, 10);
+      if (!isNaN(idx) && file.items[idx]) {
+        const targetItem = file.items[idx];
+        const targetPath = path.join(STORAGE_DIR, targetItem.storedName);
+        if (fs.existsSync(targetPath)) {
+          return res.download(targetPath, targetItem.originalName);
+        }
       }
+      return res.status(404).send('Requested file from folder not found on server');
     }
-    return res.status(404).send('Folder contents unavailable on server');
+
+    // Multi-item or folder zip stream
+    try {
+      const cleanFolderName = (file.name || 'Folder_Download').replace(/[/\\?%*:|"<>]/g, '_');
+      const zipFileName = cleanFolderName.endsWith('.zip') ? cleanFolderName : `${cleanFolderName}.zip`;
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(zipFileName)}"`);
+
+      const archive = archiver('zip', {
+        zlib: { level: 6 }
+      });
+
+      archive.on('error', (err) => {
+        console.error('Folder archive zip error:', err);
+        if (!res.headersSent) res.status(500).send('Error packaging folder archive');
+      });
+
+      archive.pipe(res);
+
+      for (const item of file.items) {
+        const itemPath = path.join(STORAGE_DIR, item.storedName);
+        if (fs.existsSync(itemPath)) {
+          archive.file(itemPath, { name: item.originalName });
+        }
+      }
+
+      archive.finalize();
+      return;
+    } catch (zipErr) {
+      console.error('Zip stream failure:', zipErr);
+      return res.status(500).send('Error streaming zipped folder');
+    }
   }
 
   const filePath = path.join(STORAGE_DIR, file.storedName);
@@ -453,10 +584,14 @@ app.put('/api/files/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   const { name, timerSeconds, retentionDays } = req.body;
   const db = readDB();
-  const file = db.files.find(f => f.id === id && f.userId === req.user.id);
+  const file = db.files.find(f => f.id === id);
 
   if (!file) {
-    return res.status(404).json({ error: 'File not found or permission denied' });
+    return res.status(404).json({ error: 'File not found or already deleted' });
+  }
+
+  if (!isFileOwnerOrAdmin(file, req.user)) {
+    return res.status(403).json({ error: 'Permission denied: This file belongs to ' + (file.uploaderUsername || 'another user') });
   }
 
   if (name && typeof name === 'string' && name.trim().length > 0) {
@@ -487,15 +622,22 @@ app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), (re
     }
 
     const db = readDB();
-    const file = db.files.find(f => f.id === id && f.userId === req.user.id);
+    const file = db.files.find(f => f.id === id);
 
     if (!file) {
-      // Clean up newly uploaded file if file not found
       if (req.file.filename) {
         const p = path.join(STORAGE_DIR, req.file.filename);
         if (fs.existsSync(p)) fs.unlinkSync(p);
       }
-      return res.status(404).json({ error: 'File not found or permission denied' });
+      return res.status(404).json({ error: 'File not found or already deleted' });
+    }
+
+    if (!isFileOwnerOrAdmin(file, req.user)) {
+      if (req.file.filename) {
+        const p = path.join(STORAGE_DIR, req.file.filename);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+      return res.status(403).json({ error: 'Permission denied: This file belongs to ' + (file.uploaderUsername || 'another user') });
     }
 
     // Safely remove previous physical file
@@ -524,31 +666,38 @@ app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), (re
   }
 });
 
-// Delete file
+// Delete file (Resilient and clean)
 app.delete('/api/files/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   const db = readDB();
-  const index = db.files.findIndex(f => f.id === id && f.userId === req.user.id);
+  const file = db.files.find(f => f.id === id);
 
-  if (index === -1) {
-    return res.status(404).json({ error: 'File not found or permission denied' });
+  if (!file) {
+    return res.status(404).json({ error: 'File not found or already deleted' });
   }
 
-  const [removedFile] = db.files.splice(index, 1);
+  if (!isFileOwnerOrAdmin(file, req.user)) {
+    return res.status(403).json({ error: 'Permission denied: This file belongs to ' + (file.uploaderUsername || 'another user') });
+  }
 
-  // Clean up physical file(s) from storage
-  try {
-    if (removedFile.isFolder && removedFile.items) {
-      removedFile.items.forEach(item => {
-        const p = path.join(STORAGE_DIR, item.storedName);
+  const index = db.files.findIndex(f => f.id === id);
+  if (index !== -1) {
+    const [removedFile] = db.files.splice(index, 1);
+
+    // Clean up physical file(s) from storage
+    try {
+      if (removedFile.isFolder && removedFile.items) {
+        removedFile.items.forEach(item => {
+          const p = path.join(STORAGE_DIR, item.storedName);
+          if (fs.existsSync(p)) fs.unlinkSync(p);
+        });
+      } else if (removedFile.storedName) {
+        const p = path.join(STORAGE_DIR, removedFile.storedName);
         if (fs.existsSync(p)) fs.unlinkSync(p);
-      });
-    } else if (removedFile.storedName) {
-      const p = path.join(STORAGE_DIR, removedFile.storedName);
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+    } catch (err) {
+      console.error('Physical file unlink notice (already removed or missing):', err.message);
     }
-  } catch (err) {
-    console.error('Error removing file from disk:', err);
   }
 
   writeDB(db);

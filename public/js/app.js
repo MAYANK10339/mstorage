@@ -83,6 +83,9 @@
     btnCopyPublicLink: document.getElementById('btn-copy-public-link'),
     btnPublicCopyText: document.getElementById('btn-public-copy-text'),
     dlFileIcon: document.getElementById('dl-file-icon'),
+    dlFolderContents: document.getElementById('dl-folder-contents'),
+    dlFolderCountBadge: document.getElementById('dl-folder-count-badge'),
+    dlFolderItemsList: document.getElementById('dl-folder-items-list'),
 
     // Share Modal (Pure Direct Link Sharing)
     shareModal: document.getElementById('share-modal'),
@@ -726,12 +729,23 @@
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${state.token}` }
       });
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         showToast('File deleted and storage space freed', 'success');
         state.files = state.files.filter(f => f.id !== id);
         renderFiles();
       } else {
-        showToast('Failed to delete file', 'error');
+        if (res.status === 401 || res.status === 403) {
+          showToast(data.error || 'Session expired. Please sign in again.', 'error');
+          openAuthModal('login');
+        } else if (res.status === 404) {
+          showToast('File already removed from storage', 'info');
+          state.files = state.files.filter(f => f.id !== id);
+          renderFiles();
+        } else {
+          showToast(data.error || 'Failed to delete file', 'error');
+        }
       }
     } catch (err) {
       showToast('Network error while deleting file', 'error');
@@ -774,9 +788,14 @@
     try {
       const res = await fetch(`/api/files/public/${fileId}`);
       if (!res.ok) {
-        const errData = await res.json();
-        el.dlFileName.textContent = errData.error || 'File Not Found';
-        el.btnDlLabel.textContent = 'Link Expired or Invalid';
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 410) {
+          el.dlFileName.textContent = errData.error || 'This file link has expired';
+          el.btnDlLabel.textContent = 'Link Expired';
+        } else {
+          el.dlFileName.textContent = errData.error || 'File Unavailable or Removed';
+          el.btnDlLabel.textContent = 'File Unavailable';
+        }
         el.btnTriggerDownload.disabled = true;
         return;
       }
@@ -795,6 +814,42 @@
       if (file.isFolder) icon = '#icon-folder';
       else if (file.isZip) icon = '#icon-zip';
       el.dlFileIcon.innerHTML = `<svg class="svg-icon svg-lg"><use href="${icon}"/></svg>`;
+
+      // Render folder contents listing if this is a folder bundle
+      if (file.isFolder && file.items && file.items.length > 0 && el.dlFolderContents) {
+        el.dlFolderContents.classList.remove('hidden');
+        if (el.dlFolderCountBadge) {
+          el.dlFolderCountBadge.textContent = `${file.items.length} file(s) in this folder bundle`;
+        }
+        if (el.dlFolderItemsList) {
+          el.dlFolderItemsList.innerHTML = file.items.map(item => `
+            <div class="folder-item-row">
+              <div class="folder-item-left">
+                <svg class="svg-icon svg-sm" style="color: var(--cyan); flex-shrink: 0;"><use href="#icon-file"/></svg>
+                <span class="folder-item-name" title="${escapeHtml(item.originalName)}">${escapeHtml(item.originalName)}</span>
+              </div>
+              <div class="folder-item-right">
+                <span class="folder-item-size">${formatBytes(item.size)}</span>
+                <button type="button" class="btn-item-dl" title="Download ${escapeHtml(item.originalName)}" data-index="${item.index}">
+                  <svg class="svg-icon svg-sm"><use href="#icon-download"/></svg>
+                </button>
+              </div>
+            </div>
+          `).join('');
+
+          el.dlFolderItemsList.querySelectorAll('.btn-item-dl').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const idx = btn.getAttribute('data-index');
+              const item = file.items[idx];
+              triggerDirectDownload(`/api/files/download/${file.id}?item=${idx}`, item ? item.originalName : '');
+              showToast(`Downloading ${item ? item.originalName : 'file'}...`, 'info');
+            });
+          });
+        }
+      } else if (el.dlFolderContents) {
+        el.dlFolderContents.classList.add('hidden');
+      }
 
       // Countdown Timer Logic
       const timerSeconds = parseInt(file.timerSeconds, 10) || 0;
@@ -861,12 +916,16 @@
 
   function unlockDownloadButton(fileId) {
     el.btnTriggerDownload.disabled = false;
-    el.btnDlLabel.textContent = 'Download Now';
+    const isFolder = state.activeDownloadFile && state.activeDownloadFile.isFolder;
+    el.btnDlLabel.textContent = isFolder ? 'Download Entire Folder (.ZIP)' : 'Download Now';
 
     el.btnTriggerDownload.onclick = () => {
-      const fileName = state.activeDownloadFile ? state.activeDownloadFile.name : '';
+      let fileName = state.activeDownloadFile ? state.activeDownloadFile.name : '';
+      if (isFolder && !fileName.toLowerCase().endsWith('.zip')) {
+        fileName = `${fileName}.zip`;
+      }
       triggerDirectDownload(`/api/files/download/${fileId}`, fileName);
-      showToast('Starting instant direct download...', 'info');
+      showToast(isFolder ? 'Packaging & starting folder zip download...' : 'Starting instant direct download...', 'info');
       const currentDl = parseInt(el.dlDownloadsCount.textContent, 10) || 0;
       el.dlDownloadsCount.textContent = currentDl + 1;
     };
