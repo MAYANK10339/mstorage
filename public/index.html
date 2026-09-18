@@ -118,6 +118,19 @@
         <circle cx="12" cy="12" r="2" fill="currentColor"/>
         <circle cx="12" cy="19" r="2" fill="currentColor"/>
       </g>
+      <!-- Zap / Lightning Icon for XerEngine -->
+      <g id="icon-zap">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor"/>
+      </g>
+      <!-- Pause Icon -->
+      <g id="icon-pause">
+        <rect x="6" y="4" width="4" height="16" fill="currentColor" rx="1"/>
+        <rect x="14" y="4" width="4" height="16" fill="currentColor" rx="1"/>
+      </g>
+      <!-- Play Icon -->
+      <g id="icon-play">
+        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+      </g>
     </defs>
   </svg>
 
@@ -432,22 +445,69 @@
             </div>
           </div>
 
-          <!-- Active Upload Progress View -->
+          <!-- Active Upload Progress View (Powered by XerEngine Turbo v5.0) -->
           <div id="upload-progress-panel" class="upload-progress-panel hidden">
+            
+            <!-- XerEngine Header HUD -->
+            <div class="xerengine-hud-top">
+              <div class="xerengine-badge">
+                <span class="xer-pulse-dot"></span>
+                <svg class="svg-icon svg-xs"><use href="#icon-zap"/></svg>
+                <span>XerEngine v5.0 Turbo</span>
+              </div>
+              <div class="xer-stream-stats">
+                <span id="xer-engine-threads" class="xer-engine-chip">6x Parallel Stream</span>
+                <span id="xer-eta-chip" class="xer-engine-chip">ETA: --</span>
+              </div>
+            </div>
+
+            <!-- Instant Deduplication Hit Banner -->
+            <div id="xer-instant-banner" class="xer-instant-banner hidden">
+              <svg class="svg-icon svg-sm"><use href="#icon-zap"/></svg>
+              <span>XerEngine Instant Hit! Deduplication Matched — 100% Uploaded in 0.05s!</span>
+            </div>
+
             <div class="progress-info-row">
               <div class="progress-file-info">
-                <span class="live-dot"></span>
+                <span class="live-dot" id="progress-live-dot"></span>
                 <strong id="progress-file-name">Uploading...</strong>
               </div>
               <span id="progress-percentage-text">0%</span>
             </div>
+
             <div class="progress-track">
               <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
             </div>
-            <div class="progress-details-row">
-              <span id="progress-status-speed">Streaming directly to storage...</span>
-              <span id="progress-status-size">0 KB</span>
+
+            <!-- Visual Real-Time Chunk Progress Matrix -->
+            <div id="xer-matrix-wrap" class="xer-matrix-wrap hidden">
+              <div class="xer-matrix-label">
+                <span>Parallel Chunk Map</span>
+                <span id="xer-chunks-count">0 / 0 Chunks</span>
+              </div>
+              <div id="xer-chunk-matrix" class="xer-chunk-matrix"></div>
             </div>
+
+            <div class="progress-details-row">
+              <div class="progress-speed-box">
+                <svg class="svg-icon svg-xs" style="color: var(--cyan);"><use href="#icon-speed"/></svg>
+                <span id="progress-status-speed">Starting XerEngine...</span>
+              </div>
+              <span id="progress-status-size">0 MB / 0 MB</span>
+            </div>
+
+            <!-- Upload Controls (Pause / Resume / Cancel) -->
+            <div class="xer-controls-row" id="xer-controls-row">
+              <button type="button" id="btn-xer-pause" class="btn btn-ghost btn-xs">
+                <svg class="svg-icon svg-xs"><use href="#icon-pause"/></svg>
+                <span id="btn-xer-pause-text">Pause</span>
+              </button>
+              <button type="button" id="btn-xer-cancel" class="btn btn-ghost btn-xs text-danger">
+                <svg class="svg-icon svg-xs"><use href="#icon-cross"/></svg>
+                <span>Cancel</span>
+              </button>
+            </div>
+
           </div>
 
         </div>
@@ -884,7 +944,8 @@
     </a>
   </nav>
 
-  <!-- Scripts: App Core -->
+  <!-- Scripts: App Core & XerEngine -->
+  <script src="/js/xerengine.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

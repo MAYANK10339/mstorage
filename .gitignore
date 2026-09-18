@@ -12,6 +12,10 @@ yarn-error.log*
 storage/uploads/*
 !storage/uploads/.gitkeep
 
+# XerEngine temporary chunk storage
+storage/chunks/*
+!storage/chunks/.gitkeep
+
 # Local database temp files
 data/*.tmp
 data/*.bak

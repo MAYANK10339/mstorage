@@ -56,13 +56,22 @@
     timerSelector: document.getElementById('timer-selector'),
     selectRetention: document.getElementById('select-retention'),
 
-    // Progress
+    // Progress & XerEngine HUD
     uploadProgressPanel: document.getElementById('upload-progress-panel'),
     progressFileName: document.getElementById('progress-file-name'),
     progressPercentageText: document.getElementById('progress-percentage-text'),
     progressBarFill: document.getElementById('progress-bar-fill'),
     progressStatusSpeed: document.getElementById('progress-status-speed'),
     progressStatusSize: document.getElementById('progress-status-size'),
+    xerEngineThreads: document.getElementById('xer-engine-threads'),
+    xerEtaChip: document.getElementById('xer-eta-chip'),
+    xerInstantBanner: document.getElementById('xer-instant-banner'),
+    xerMatrixWrap: document.getElementById('xer-matrix-wrap'),
+    xerChunksCount: document.getElementById('xer-chunks-count'),
+    xerChunkMatrix: document.getElementById('xer-chunk-matrix'),
+    btnXerPause: document.getElementById('btn-xer-pause'),
+    btnXerPauseText: document.getElementById('btn-xer-pause-text'),
+    btnXerCancel: document.getElementById('btn-xer-cancel'),
 
     // Vault
     vaultFilesGrid: document.getElementById('vault-files-grid'),
@@ -466,27 +475,159 @@
     return true;
   }
 
-  function uploadFileList(files, uploadType = 'file', folderName = '') {
-    if (!files || files.length === 0) return;
+  let currentXerUpload = null;
 
+  function formatEta(seconds) {
+    if (!seconds || seconds <= 0) return '--';
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    if (m < 60) return `${m}m ${s}s`;
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+
+  async function uploadFileList(files, uploadType = 'file', folderName = '') {
+    if (!files || files.length === 0) return;
+    if (!ensureAuth()) return;
+
+    // Folder upload with multiple items: use multi-file bundle endpoint
+    if (uploadType === 'folder' && files.length > 1) {
+      uploadFolderBundle(files, folderName);
+      return;
+    }
+
+    // Single or individual files / zip: Run through XerEngine Turbo
+    await uploadWithXerEngine(Array.from(files));
+  }
+
+  async function uploadWithXerEngine(filesList) {
+    for (let i = 0; i < filesList.length; i++) {
+      const file = filesList[i];
+      const isMulti = filesList.length > 1;
+
+      // Show panel & reset UI
+      el.uploadProgressPanel.classList.remove('hidden');
+      if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
+      if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Pause';
+      const pauseIcon = el.btnXerPause ? el.btnXerPause.querySelector('use') : null;
+      if (pauseIcon) pauseIcon.setAttribute('href', '#icon-pause');
+
+      el.progressBarFill.style.width = '0%';
+      el.progressPercentageText.textContent = '0%';
+      el.progressFileName.textContent = isMulti ? `[${i + 1}/${filesList.length}] ${file.name}` : file.name;
+      el.progressStatusSpeed.textContent = 'Initializing XerEngine...';
+      el.progressStatusSize.textContent = `0 MB / ${formatBytes(file.size)}`;
+      if (el.xerEtaChip) el.xerEtaChip.textContent = 'ETA: --';
+      if (el.xerEngineThreads) el.xerEngineThreads.textContent = 'Multi-Stream Ready';
+
+      // Setup Chunk Matrix if file is chunked (> 5MB)
+      const config = window.XerEngine ? window.XerEngine.getEngineConfig(file.size) : { chunkSize: 4 * 1024 * 1024, concurrency: 6 };
+      const totalChunks = Math.ceil(file.size / config.chunkSize) || 1;
+
+      if (totalChunks > 1 && el.xerMatrixWrap && el.xerChunkMatrix) {
+        el.xerMatrixWrap.classList.remove('hidden');
+        el.xerChunksCount.textContent = `0 / ${totalChunks} Chunks`;
+        el.xerChunkMatrix.innerHTML = '';
+        const maxBoxes = Math.min(totalChunks, 150);
+        for (let c = 0; c < maxBoxes; c++) {
+          const box = document.createElement('div');
+          box.className = 'xer-chunk-box';
+          box.id = `xer-box-${c}`;
+          el.xerChunkMatrix.appendChild(box);
+        }
+      } else if (el.xerMatrixWrap) {
+        el.xerMatrixWrap.classList.add('hidden');
+      }
+
+      await new Promise((resolve) => {
+        const uploader = new window.XerEngine.Upload(file, {
+          token: state.token,
+          timerSeconds: state.currentTimer,
+          retentionDays: state.currentRetention,
+          onProgress: (percent, loaded, total) => {
+            el.progressBarFill.style.width = `${percent}%`;
+            el.progressPercentageText.textContent = `${percent}%`;
+            el.progressStatusSize.textContent = `${formatBytes(loaded)} / ${formatBytes(total)}`;
+          },
+          onSpeed: (speed, etaSeconds, concurrency) => {
+            const mbps = ((speed * 8) / (1024 * 1024)).toFixed(1);
+            el.progressStatusSpeed.textContent = `${formatBytes(speed)}/s (${mbps} Mbps)`;
+            if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(etaSeconds)}`;
+            if (el.xerEngineThreads) el.xerEngineThreads.textContent = `${concurrency}x Parallel Pipelines`;
+          },
+          onChunkDone: (chunkIdx, total, completed) => {
+            if (el.xerChunksCount) {
+              el.xerChunksCount.textContent = `${completed} / ${total} Chunks`;
+            }
+            const box = document.getElementById(`xer-box-${chunkIdx}`);
+            if (box) {
+              box.classList.add('done');
+            }
+          },
+          onInstantHit: (record) => {
+            if (el.xerInstantBanner) el.xerInstantBanner.classList.remove('hidden');
+            showToast('⚡ XerEngine Instant Hit: Uploaded in 0.05s!', 'success');
+          },
+          onStateChange: (newState) => {
+            if (newState === 'fingerprinting') {
+              el.progressStatusSpeed.textContent = 'Calculating XerEngine Fingerprint...';
+            } else if (newState === 'assembling') {
+              el.progressStatusSpeed.textContent = 'Assembling parallel chunks stream...';
+            } else if (newState === 'paused') {
+              el.progressStatusSpeed.textContent = 'Upload Paused';
+            }
+          },
+          onComplete: (record) => {
+            showToast('Upload completed successfully!', 'success');
+            setTimeout(() => {
+              el.uploadProgressPanel.classList.add('hidden');
+              if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
+            }, 1200);
+
+            if (record) {
+              openShareModal(record);
+            }
+            loadUserFiles();
+            currentXerUpload = null;
+            resolve();
+          },
+          onError: (err) => {
+            showToast(`Upload failed: ${err.message}`, 'error');
+            el.uploadProgressPanel.classList.add('hidden');
+            currentXerUpload = null;
+            resolve();
+          }
+        });
+
+        currentXerUpload = uploader;
+        uploader.start();
+      });
+    }
+
+    // Reset inputs
+    el.inputFiles.value = '';
+    el.inputZip.value = '';
+    el.inputFolder.value = '';
+  }
+
+  function uploadFolderBundle(files, folderName) {
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
       formData.append('files', files[i]);
     }
-
-    formData.append('uploadType', uploadType);
+    formData.append('uploadType', 'folder');
     formData.append('folderName', folderName || files[0].name);
     formData.append('timerSeconds', state.currentTimer);
     formData.append('retentionDays', state.currentRetention);
 
-    // Show progress panel
     el.uploadProgressPanel.classList.remove('hidden');
-    el.progressFileName.textContent = uploadType === 'folder' 
-      ? `Uploading folder: ${folderName} (${files.length} items)`
-      : `Uploading ${files.length} item(s)...`;
+    if (el.xerMatrixWrap) el.xerMatrixWrap.classList.add('hidden');
+    if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
+    el.progressFileName.textContent = `Uploading folder: ${folderName} (${files.length} items)`;
     el.progressBarFill.style.width = '0%';
     el.progressPercentageText.textContent = '0%';
-    el.progressStatusSpeed.textContent = 'Streaming directly to storage...';
+    el.progressStatusSpeed.textContent = 'Streaming multi-file folder archive...';
 
     const startTime = Date.now();
     let lastTime = startTime;
@@ -502,8 +643,6 @@
 
         const now = Date.now();
         const timeDiff = (now - lastTime) / 1000;
-
-        // Update real-time rolling speed every 250ms
         if (timeDiff >= 0.25) {
           const bytesDiff = e.loaded - lastLoaded;
           const currentSpeed = bytesDiff / timeDiff;
@@ -524,26 +663,21 @@
         if (xhr.status === 200 || xhr.status === 201) {
           try {
             const data = JSON.parse(xhr.responseText);
-            showToast('Upload completed successfully!', 'success');
+            showToast('Folder uploaded successfully!', 'success');
             setTimeout(() => {
               el.uploadProgressPanel.classList.add('hidden');
             }, 800);
-
             if (data.files && data.files.length > 0) {
               openShareModal(data.files[0]);
             }
             loadUserFiles();
           } catch (e) {
-            showToast('Upload completed', 'info');
+            showToast('Folder uploaded', 'info');
           }
         } else {
-          showToast('Upload failed. Please check connection and try again.', 'error');
+          showToast('Folder upload failed. Please try again.', 'error');
           el.uploadProgressPanel.classList.add('hidden');
         }
-
-        // Reset inputs
-        el.inputFiles.value = '';
-        el.inputZip.value = '';
         el.inputFolder.value = '';
       }
     };
@@ -1131,6 +1265,35 @@
         link.addEventListener('click', () => {
           closeMobileDrawer();
         });
+      });
+    }
+
+    // XerEngine Controls (Pause / Resume / Cancel)
+    if (el.btnXerPause) {
+      el.btnXerPause.addEventListener('click', () => {
+        if (!currentXerUpload) return;
+        if (currentXerUpload.state === 'uploading') {
+          currentXerUpload.pause();
+          if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Resume';
+          const icon = el.btnXerPause.querySelector('use');
+          if (icon) icon.setAttribute('href', '#icon-play');
+        } else if (currentXerUpload.state === 'paused') {
+          currentXerUpload.resume();
+          if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Pause';
+          const icon = el.btnXerPause.querySelector('use');
+          if (icon) icon.setAttribute('href', '#icon-pause');
+        }
+      });
+    }
+
+    if (el.btnXerCancel) {
+      el.btnXerCancel.addEventListener('click', () => {
+        if (currentXerUpload) {
+          currentXerUpload.cancel();
+          currentXerUpload = null;
+        }
+        el.uploadProgressPanel.classList.add('hidden');
+        showToast('Upload cancelled by user', 'info');
       });
     }
 

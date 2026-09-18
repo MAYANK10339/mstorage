@@ -582,13 +582,82 @@ button, input, select {
   color: var(--text-main);
 }
 
-/* Upload Progress Panel */
+/* Upload Progress Panel (Powered by XerEngine Turbo) */
 .upload-progress-panel {
   margin-top: 20px;
   padding: 18px;
   border-radius: var(--radius-md);
-  background: rgba(59, 130, 246, 0.06);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(14, 21, 38, 0.94);
+  border: 1px solid var(--border-glow);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  transition: all var(--transition-smooth);
+}
+
+.xerengine-hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xerengine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.38);
+  color: var(--cyan);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.5px;
+}
+
+.xer-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  animation: pulseGlow 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.xer-stream-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xer-engine-chip {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.xer-instant-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.18), rgba(6, 182, 212, 0.18));
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #34d399;
+  font-weight: 600;
+  font-size: 0.84rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  animation: slideUp 0.18s ease-out;
 }
 
 .progress-info-row, .progress-details-row {
@@ -605,8 +674,8 @@ button, input, select {
 }
 
 .progress-track {
-  height: 8px;
-  border-radius: 4px;
+  height: 9px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.08);
   margin: 10px 0;
   overflow: hidden;
@@ -615,12 +684,76 @@ button, input, select {
 .progress-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--cyan), var(--primary), var(--accent));
-  transition: width 0.15s ease-out;
+  transition: width 0.12s ease-out;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
+/* XerEngine Chunk Progress Matrix Grid */
+.xer-matrix-wrap {
+  margin: 10px 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.xer-matrix-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-subtle);
+  margin-bottom: 6px;
+}
+
+.xer-chunk-matrix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-height: 80px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.xer-chunk-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.xer-chunk-box.done {
+  background: var(--cyan);
+  box-shadow: 0 0 5px rgba(6, 182, 212, 0.6);
+}
+
+.xer-chunk-box.uploading {
+  background: var(--warning);
+  box-shadow: 0 0 5px rgba(245, 158, 11, 0.6);
 }
 
 .progress-details-row {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-subtle);
+  margin-top: 4px;
+}
+
+.progress-speed-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.xer-controls-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Vault Section */
