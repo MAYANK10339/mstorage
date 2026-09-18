@@ -1714,41 +1714,709 @@ button, input, select {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Responsive adjustments */
-@media (max-width: 960px) {
-  .comparison-grid {
-    grid-template-columns: 1fr;
-  }
-  .about-features-grid {
-    grid-template-columns: 1fr;
-  }
-  .developer-profile-card {
-    flex-direction: column;
-    text-align: center;
-  }
-  .dev-stats-strip {
-    justify-content: center;
+/* Mobile Bottom Navigation Bar (Ultra-Smooth Native App Style) */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: rgba(10, 15, 30, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) 10px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.55);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-item svg {
+  width: 18px;
+  height: 18px;
+  transition: transform var(--transition-fast);
+}
+
+.mobile-nav-item.active {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.mobile-nav-item.active svg {
+  transform: translateY(-2px);
+  color: var(--cyan);
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.92);
+}
+
+/* Hide mobile bottom nav on desktop screens */
+@media (min-width: 769px) {
+  .mobile-bottom-nav {
+    display: none !important;
   }
 }
 
-@media (max-width: 680px) {
-  .hero-heading {
-    font-size: 2.1rem;
+/* ===================================================================
+   RESPONSIVE DESIGN BREAKPOINTS - ALL DEVICES & TOUCH ACCESSIBILITY
+   =================================================================== */
+
+/* 1. TABLETS & SMALL LAPTOPS (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .header-container {
+    padding: 12px 18px;
   }
+
+  .hero-heading {
+    font-size: 2.6rem;
+  }
+
+  .comparison-grid {
+    grid-template-columns: 1fr;
+    max-width: 620px;
+    margin: 0 auto;
+    gap: 20px;
+  }
+
+  .about-features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .developer-profile-card {
+    padding: 28px 24px;
+    gap: 24px;
+  }
+
+  .vault-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+/* 2. MOBILE PHONES & PORTRAIT TABLETS (max-width: 768px) */
+@media (max-width: 768px) {
+  /* Prevent iOS input zoom and ensure fluid layout */
+  button, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .form-input, .custom-select, .search-input {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+  }
+
+  /* Header adjustments */
+  .site-header {
+    padding: 6px 0;
+  }
+
+  .header-container {
+    padding: 8px 14px;
+    gap: 12px;
+  }
+
+  .brand-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .brand-name {
+    font-size: 1.18rem;
+  }
+
+  .brand-badge {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+  }
+
+  /* Desktop nav hidden on mobile; bottom nav takes over */
+  .header-actions .nav-links {
+    display: none !important;
+  }
+
+  /* Compact creator chip in header on mobile */
+  .creator-badge {
+    padding: 4px 8px;
+    font-size: 0.74rem;
+    gap: 5px;
+  }
+
+  .creator-badge-label {
+    display: none;
+  }
+
+  .user-profile-pill {
+    padding: 3px 8px 3px 4px;
+    gap: 6px;
+  }
+
+  .user-avatar-circle {
+    width: 24px;
+    height: 24px;
+    font-size: 0.72rem;
+  }
+
+  .user-handle {
+    font-size: 0.8rem;
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Main content spacing for bottom nav */
+  .main-content {
+    padding: 16px 12px 90px 12px;
+  }
+
+  /* Hero adjustments */
+  .hero-section {
+    padding: 12px 0 26px 0;
+  }
+
+  .hero-tagline {
+    font-size: 0.76rem;
+    padding: 4px 11px;
+    margin-bottom: 12px;
+    max-width: 95%;
+  }
+
+  .hero-heading {
+    font-size: clamp(1.8rem, 6.8vw, 2.35rem);
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+
+  .hero-subtext {
+    font-size: 0.94rem;
+    line-height: 1.5;
+    padding: 0 4px;
+  }
+
+  /* Upload section & dropzone */
+  .upload-section {
+    margin-bottom: 38px;
+  }
+
+  .upload-panel {
+    padding: 16px 12px;
+    border-radius: var(--radius-lg);
+  }
+
+  .dropzone {
+    padding: 24px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .dropzone-icon-ring {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 12px;
+  }
+
+  .dropzone-title {
+    font-size: 1.2rem;
+  }
+
+  .dropzone-hint {
+    font-size: 0.85rem;
+    margin-bottom: 18px;
+  }
+
   .upload-buttons-group {
     flex-direction: column;
+    width: 100%;
+    gap: 10px;
   }
-  .header-actions .nav-links {
+
+  .upload-buttons-group .btn {
+    width: 100%;
+    min-height: 46px;
+    font-size: 0.94rem;
+    justify-content: center;
+  }
+
+  .upload-options-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+    margin-top: 16px;
+  }
+
+  .option-control {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .option-icon-label {
+    font-size: 0.82rem;
+  }
+
+  .pill-selectors {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px;
+    padding: 3px;
+  }
+
+  .pill-selectors::-webkit-scrollbar {
     display: none;
   }
-  .creator-badge {
-    display: none;
+
+  .pill-btn {
+    flex: 1 0 auto;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    text-align: center;
+    white-space: nowrap;
   }
+
+  .custom-select {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 0.88rem;
+  }
+
+  /* Upload progress */
+  .upload-progress-panel {
+    padding: 14px 12px;
+    margin-top: 14px;
+  }
+
+  .progress-info-row {
+    font-size: 0.84rem;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .progress-file-info {
+    max-width: 75%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .progress-details-row {
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Vault section */
+  .vault-section {
+    margin-bottom: 40px;
+  }
+
+  .vault-container {
+    padding: 18px 12px;
+    border-radius: var(--radius-lg);
+  }
+
+  .vault-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .vault-title-group {
+    gap: 10px;
+  }
+
+  .section-icon-box {
+    width: 38px;
+    height: 38px;
+  }
+
+  .section-title {
+    font-size: 1.35rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.84rem;
+  }
+
+  .vault-controls {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .search-input-wrap {
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 12px 10px 36px;
+  }
+
+  .storage-usage-pill {
+    width: 100%;
+    text-align: center;
+    padding: 8px;
+  }
+
+  /* Vault Grid 1 column on mobile (never overflows) */
+  .vault-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .file-item-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .file-title {
+    font-size: 0.92rem;
+    max-width: calc(100vw - 110px);
+  }
+
+  .file-details {
+    font-size: 0.74rem;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .file-card-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .action-icon-buttons {
+    gap: 6px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Comparison section */
+  .comparison-section {
+    margin-bottom: 44px;
+  }
+
+  .section-heading-center {
+    margin-bottom: 24px;
+  }
+
+  .comparison-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .comp-card {
+    padding: 22px 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .comp-card.highlight-glow {
+    box-shadow: 0 0 25px -8px var(--primary-glow);
+  }
+
+  .comp-badge-winner {
+    font-size: 0.68rem;
+    padding: 2px 10px;
+  }
+
+  .comp-list {
+    gap: 10px;
+  }
+
+  .comp-item {
+    font-size: 0.86rem;
+    gap: 8px;
+  }
+
+  /* About section */
+  .developer-profile-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 22px 14px;
+    gap: 16px;
+    border-radius: var(--radius-lg);
+  }
+
+  .dev-avatar-inner {
+    width: 72px;
+    height: 72px;
+    font-size: 1.6rem;
+    margin: 0 auto;
+  }
+
+  .dev-name {
+    font-size: 1.55rem;
+    margin-bottom: 6px;
+  }
+
+  .dev-bio {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+
+  .dev-stats-strip {
+    justify-content: center;
+    gap: 14px;
+  }
+
+  .dev-stat-value {
+    font-size: 1.2rem;
+  }
+
+  .about-features-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .about-feature-box {
+    padding: 18px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Public Download view */
+  .download-view {
+    margin: 10px auto;
+    padding: 0 4px;
+  }
+
+  .download-card {
+    padding: 24px 14px;
+    border-radius: var(--radius-lg);
+  }
+
+  .download-file-icon {
+    width: 58px;
+    height: 58px;
+  }
+
+  .download-title {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+
+  .download-meta-row {
+    padding: 10px 12px;
+    gap: 10px;
+    justify-content: space-around;
+  }
+
+  .guest-privacy-notice {
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .timer-display-box {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px 12px;
+    gap: 12px;
+  }
+
+  .timer-circle-wrap {
+    margin: 0 auto;
+  }
+
+  .timer-info-text h4 {
+    font-size: 0.94rem;
+  }
+
+  .timer-info-text p {
+    font-size: 0.8rem;
+  }
+
+  .btn-xl {
+    padding: 14px 20px;
+    font-size: 1.02rem;
+    min-height: 48px;
+  }
+
+  .download-sub-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .download-sub-actions .btn {
+    width: 100%;
+    min-height: 42px;
+    justify-content: center;
+  }
+
+  .dl-folder-contents-box {
+    padding: 12px 10px;
+  }
+
+  .folder-item-name {
+    max-width: calc(100vw - 160px);
+    font-size: 0.8rem;
+  }
+
+  /* Modals */
+  .modal-backdrop {
+    padding: 10px;
+    align-items: center;
+  }
+
+  .modal-card {
+    padding: 22px 16px;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-close-btn {
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .form-input {
+    font-size: 16px !important;
+    padding: 11px 14px;
+  }
+
+  .pin-input {
+    font-size: 1.4rem !important;
+    letter-spacing: 12px;
+    text-align: center;
+  }
+
+  .auth-tabs {
+    margin-bottom: 18px;
+  }
+
+  .share-copy-box {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .share-input {
+    width: 100%;
+    font-size: 0.84rem;
+  }
+
+  .btn-copy-share-url {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .edit-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .confirm-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  /* Toast Notification positioning on mobile */
+  .toast-container {
+    bottom: 74px;
+    right: 12px;
+    left: 12px;
+    align-items: center;
+  }
+
+  .toast {
+    width: 100%;
+    max-width: 380px;
+    font-size: 0.84rem;
+    padding: 10px 14px;
+    justify-content: center;
+  }
+
+  /* Footer */
+  .site-footer {
+    padding: 24px 14px 96px 14px;
+  }
+
   .footer-container {
     flex-direction: column;
     text-align: center;
+    gap: 14px;
   }
+
   .footer-meta {
     text-align: center;
+  }
+}
+
+/* 3. ULTRA-NARROW MOBILE PHONES (max-width: 380px) */
+@media (max-width: 380px) {
+  .header-container {
+    padding: 6px 10px;
+  }
+
+  .brand-icon-box {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+  }
+
+  .creator-badge {
+    display: none;
+  }
+
+  .hero-heading {
+    font-size: 1.65rem;
+  }
+
+  .option-icon-label {
+    font-size: 0.78rem;
+  }
+
+  .pill-btn {
+    padding: 5px 7px;
+    font-size: 0.72rem;
+  }
+
+  .download-title {
+    font-size: 1.15rem;
+  }
+
+  .download-meta-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .modal-card {
+    padding: 18px 12px;
   }
 }

@@ -86,6 +86,7 @@
     dlFolderContents: document.getElementById('dl-folder-contents'),
     dlFolderCountBadge: document.getElementById('dl-folder-count-badge'),
     dlFolderItemsList: document.getElementById('dl-folder-items-list'),
+    mobileBottomNav: document.getElementById('mobile-bottom-nav'),
 
     // Share Modal (Pure Direct Link Sharing)
     shareModal: document.getElementById('share-modal'),
@@ -183,6 +184,7 @@
       if (el.mainNavLinks) el.mainNavLinks.classList.add('hidden');
       if (el.guestDownloadBadge) el.guestDownloadBadge.classList.remove('hidden');
       if (el.authStateContainer) el.authStateContainer.classList.add('hidden');
+      if (el.mobileBottomNav) el.mobileBottomNav.classList.add('hidden');
       return;
     }
 
@@ -190,6 +192,7 @@
     if (el.mainNavLinks) el.mainNavLinks.classList.remove('hidden');
     if (el.guestDownloadBadge) el.guestDownloadBadge.classList.add('hidden');
     if (el.authStateContainer) el.authStateContainer.classList.remove('hidden');
+    if (el.mobileBottomNav) el.mobileBottomNav.classList.remove('hidden');
 
     if (state.token && state.user) {
       el.authStateContainer.innerHTML = `
@@ -1005,6 +1008,40 @@
 
     // Check route (public download vs dashboard)
     checkPublicDownloadRoute();
+
+    // Mobile Bottom Nav items smooth scroll & active tracking
+    if (el.mobileBottomNav) {
+      const navItems = el.mobileBottomNav.querySelectorAll('.mobile-nav-item');
+      navItems.forEach(item => {
+        item.addEventListener('click', () => {
+          navItems.forEach(n => n.classList.remove('active'));
+          item.classList.add('active');
+        });
+      });
+
+      // Scroll Spy for mobile bottom nav
+      const targetIds = ['upload-section', 'vault-section', 'comparison-section', 'about-section'];
+      const sections = targetIds.map(id => document.getElementById(id)).filter(Boolean);
+
+      if ('IntersectionObserver' in window && sections.length > 0) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const id = entry.target.id;
+              navItems.forEach(item => {
+                if (item.getAttribute('href') === `#${id}`) {
+                  item.classList.add('active');
+                } else {
+                  item.classList.remove('active');
+                }
+              });
+            }
+          });
+        }, { threshold: 0.25 });
+
+        sections.forEach(s => observer.observe(s));
+      }
+    }
 
     // If user is logged in and not on public download route, load files
     const urlParams = new URLSearchParams(window.location.search);
