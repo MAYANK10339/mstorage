@@ -107,6 +107,9 @@
       this.state = 'idle'; // 'idle' | 'fingerprinting' | 'instant' | 'uploading' | 'paused' | 'assembling' | 'completed' | 'cancelled' | 'error'
       this.completedChunks = new Set();
       this.activeControllers = new Map();
+      this.chunkBytesMap = new Map();
+      this.maxBytesLoaded = 0;
+      this.maxPercent = 0;
 
       this.bytesLoaded = 0;
       this.startTime = null;
@@ -267,10 +270,13 @@
       this.completedChunks.forEach(idx => {
         const start = idx * this.chunkSize;
         const end = Math.min(start + this.chunkSize, this.file.size);
-        this.bytesLoaded += (end - start);
+        const len = end - start;
+        this.chunkBytesMap.set(idx, len);
+        this.bytesLoaded += len;
       });
+      this.maxBytesLoaded = Math.max(this.maxBytesLoaded || 0, this.bytesLoaded);
 
-      this.updateProgress();
+      this.recalculateProgress();
 
       const workerCount = Math.min(this.concurrency, queue.length || 1);
       const workerPromises = [];
@@ -315,20 +321,18 @@
 
         const start = chunkIndex * this.chunkSize;
         const end = Math.min(start + this.chunkSize, this.file.size);
+        const chunkLength = end - start;
         const chunkBlob = this.file.slice(start, end);
 
         const xhr = new XMLHttpRequest();
         this.activeControllers.set(chunkIndex, xhr);
 
-        let previousLoaded = 0;
-
         xhr.upload.addEventListener('progress', (e) => {
           if (this.state !== 'uploading') return;
           if (e.lengthComputable) {
-            const delta = e.loaded - previousLoaded;
-            previousLoaded = e.loaded;
-            this.bytesLoaded = Math.min(this.bytesLoaded + delta, this.file.size);
-            this.updateProgress();
+            const currentChunkBytes = Math.min(e.loaded, chunkLength);
+            this.chunkBytesMap.set(chunkIndex, currentChunkBytes);
+            this.recalculateProgress();
           }
         });
 
@@ -336,21 +340,20 @@
           this.activeControllers.delete(chunkIndex);
           if (xhr.status === 200 || xhr.status === 201) {
             this.completedChunks.add(chunkIndex);
+            this.chunkBytesMap.set(chunkIndex, chunkLength);
+            this.recalculateProgress();
             if (typeof this.options.onChunkDone === 'function') {
               this.options.onChunkDone(chunkIndex, this.totalChunks, this.completedChunks.size);
             }
             resolve();
           } else {
-            this.bytesLoaded = Math.max(0, this.bytesLoaded - previousLoaded);
-            this.updateProgress();
+            // Keep existing high-water mark intact; never drop progress on retry
             reject(new Error(`Server responded with ${xhr.status}`));
           }
         });
 
         xhr.addEventListener('error', () => {
           this.activeControllers.delete(chunkIndex);
-          this.bytesLoaded = Math.max(0, this.bytesLoaded - previousLoaded);
-          this.updateProgress();
           reject(new Error('Network error uploading chunk'));
         });
 
@@ -362,8 +365,6 @@
         xhr.timeout = 90000; // 90s timeout per chunk prevents socket stalls
         xhr.addEventListener('timeout', () => {
           this.activeControllers.delete(chunkIndex);
-          this.bytesLoaded = Math.max(0, this.bytesLoaded - previousLoaded);
-          this.updateProgress();
           reject(new Error('Chunk upload timed out - auto retrying'));
         });
 
@@ -425,12 +426,37 @@
       }
     }
 
+    recalculateProgress() {
+      let totalBytes = 0;
+      // 1. Locked completed chunks
+      for (const idx of this.completedChunks) {
+        const start = idx * this.chunkSize;
+        const end = Math.min(start + this.chunkSize, this.file.size);
+        totalBytes += (end - start);
+      }
+      // 2. Active in-flight chunks
+      for (const [idx, bytes] of this.chunkBytesMap.entries()) {
+        if (!this.completedChunks.has(idx)) {
+          totalBytes += bytes;
+        }
+      }
+
+      totalBytes = Math.min(totalBytes, this.file.size);
+      // Strictly monotonic: bytesLoaded can NEVER decrease!
+      this.maxBytesLoaded = Math.max(this.maxBytesLoaded || 0, totalBytes);
+      this.bytesLoaded = this.maxBytesLoaded;
+
+      this.updateProgress();
+    }
+
     updateProgress() {
       if (typeof this.options.onProgress === 'function') {
-        const percent = this.file.size > 0 
+        const calculatedPercent = this.file.size > 0 
           ? Math.min(100, Math.round((this.bytesLoaded / this.file.size) * 100)) 
           : 0;
-        this.options.onProgress(percent, this.bytesLoaded, this.file.size);
+        // Strictly monotonic: percent can NEVER drop backwards (e.g. 35% -> 5%)!
+        this.maxPercent = Math.max(this.maxPercent || 0, calculatedPercent);
+        this.options.onProgress(this.maxPercent, this.bytesLoaded, this.file.size);
       }
     }
 

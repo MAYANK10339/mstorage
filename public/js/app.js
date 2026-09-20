@@ -528,7 +528,14 @@
       if (!ensureAuth()) return;
 
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        uploadFileList(e.dataTransfer.files, 'file');
+        const files = Array.from(e.dataTransfer.files);
+        const firstRel = files[0].webkitRelativePath;
+        if (firstRel && firstRel.includes('/')) {
+          const folderName = firstRel.split('/')[0];
+          uploadFolderBundle(files, folderName);
+        } else {
+          uploadFileList(files, 'file');
+        }
       }
     });
 
@@ -598,6 +605,11 @@
   }
 
   async function uploadWithDirectStream(filesList) {
+    const totalBatchBytes = filesList.reduce((acc, f) => acc + (f.size || 0), 0);
+    let completedBytes = 0;
+    let maxOverallPercent = 0;
+    let maxOverallLoaded = 0;
+
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i];
       const isMulti = filesList.length > 1;
@@ -608,11 +620,13 @@
       if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Streaming';
       if (el.xerEngineThreads) el.xerEngineThreads.textContent = 'Direct Stream (Normal)';
 
-      el.progressBarFill.style.width = '0%';
-      el.progressPercentageText.textContent = '0%';
+      if (i === 0) {
+        el.progressBarFill.style.width = '0%';
+        el.progressPercentageText.textContent = '0%';
+      }
       el.progressFileName.textContent = isMulti ? `[${i + 1}/${filesList.length}] ${file.name}` : file.name;
       el.progressStatusSpeed.textContent = 'Initiating direct stream...';
-      el.progressStatusSize.textContent = `0 MB / ${formatBytes(file.size)}`;
+      el.progressStatusSize.textContent = `${formatBytes(maxOverallLoaded)} / ${formatBytes(totalBatchBytes)}`;
       if (el.xerEtaChip) el.xerEtaChip.textContent = 'ETA: --';
 
       await new Promise((resolve) => {
@@ -629,20 +643,29 @@
 
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
-            el.progressBarFill.style.width = `${percent}%`;
-            el.progressPercentageText.textContent = `${percent}%`;
-            el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
+            const currentFileLoaded = Math.min(e.loaded, file.size);
+            const totalLoaded = completedBytes + currentFileLoaded;
+            maxOverallLoaded = Math.max(maxOverallLoaded, totalLoaded);
 
-            const instantSpeed = speedMeter.record(e.loaded);
+            const calculatedPercent = totalBatchBytes > 0 
+              ? Math.min(100, Math.round((maxOverallLoaded / totalBatchBytes) * 100))
+              : 0;
+
+            // Strictly monotonic: percentage can NEVER drop backwards!
+            maxOverallPercent = Math.max(maxOverallPercent, calculatedPercent);
+            el.progressBarFill.style.width = `${maxOverallPercent}%`;
+            el.progressPercentageText.textContent = `${maxOverallPercent}%`;
+            el.progressStatusSize.textContent = `${formatBytes(maxOverallLoaded)} / ${formatBytes(totalBatchBytes)}`;
+
+            const instantSpeed = speedMeter.record(maxOverallLoaded);
             const now = Date.now();
             const effectiveSpeed = instantSpeed > 0 
               ? instantSpeed 
-              : (e.loaded / ((now - startTime) / 1000 || 1));
+              : (currentFileLoaded / ((now - startTime) / 1000 || 1));
 
             const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
             el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
-            const remaining = Math.max(0, e.total - e.loaded);
+            const remaining = Math.max(0, totalBatchBytes - maxOverallLoaded);
             const eta = effectiveSpeed > 0 ? Math.ceil(remaining / effectiveSpeed) : 0;
             if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(eta)}`;
           }
@@ -652,10 +675,19 @@
           if (xhr.status === 200 || xhr.status === 201) {
             try {
               const data = JSON.parse(xhr.responseText);
-              showToast('Direct stream upload completed!', 'success');
-              setTimeout(() => {
-                el.uploadProgressPanel.classList.add('hidden');
-              }, 900);
+              completedBytes += file.size;
+              maxOverallLoaded = Math.max(maxOverallLoaded, completedBytes);
+              const batchP = totalBatchBytes > 0 ? Math.min(100, Math.round((completedBytes / totalBatchBytes) * 100)) : 100;
+              maxOverallPercent = Math.max(maxOverallPercent, batchP);
+              el.progressBarFill.style.width = `${maxOverallPercent}%`;
+              el.progressPercentageText.textContent = `${maxOverallPercent}%`;
+
+              showToast(isMulti ? `File [${i + 1}/${filesList.length}] uploaded!` : 'Direct stream upload completed!', 'success');
+              if (i === filesList.length - 1) {
+                setTimeout(() => {
+                  el.uploadProgressPanel.classList.add('hidden');
+                }, 900);
+              }
               if (data.files && data.files.length > 0) {
                 openShareModal(data.files[0]);
               }
@@ -688,6 +720,11 @@
   }
 
   async function uploadWithXerEngine(filesList) {
+    const totalBatchBytes = filesList.reduce((acc, f) => acc + (f.size || 0), 0);
+    let completedBytes = 0;
+    let maxOverallPercent = 0;
+    let maxOverallLoaded = 0;
+
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i];
       const isMulti = filesList.length > 1;
@@ -699,16 +736,18 @@
       const pauseIcon = el.btnXerPause ? el.btnXerPause.querySelector('use') : null;
       if (pauseIcon) pauseIcon.setAttribute('href', '#icon-pause');
 
-      el.progressBarFill.style.width = '0%';
-      el.progressPercentageText.textContent = '0%';
+      if (i === 0) {
+        el.progressBarFill.style.width = '0%';
+        el.progressPercentageText.textContent = '0%';
+      }
       el.progressFileName.textContent = isMulti ? `[${i + 1}/${filesList.length}] ${file.name}` : file.name;
       el.progressStatusSpeed.textContent = 'Initializing XerEngine...';
-      el.progressStatusSize.textContent = `0 MB / ${formatBytes(file.size)}`;
+      el.progressStatusSize.textContent = `${formatBytes(maxOverallLoaded)} / ${formatBytes(totalBatchBytes)}`;
       if (el.xerEtaChip) el.xerEtaChip.textContent = 'ETA: --';
       if (el.xerEngineThreads) el.xerEngineThreads.textContent = 'Multi-Stream Ready';
 
       // Setup Chunk Matrix if file is chunked (> 5MB)
-      const config = window.XerEngine ? window.XerEngine.getEngineConfig(file.size) : { chunkSize: 4 * 1024 * 1024, concurrency: 6 };
+      const config = window.XerEngine ? window.XerEngine.getEngineConfig(file.size) : { chunkSize: 4 * 1024 * 1024, concurrency: 2 };
       const totalChunks = Math.ceil(file.size / config.chunkSize) || 1;
 
       if (totalChunks > 1 && el.xerMatrixWrap && el.xerChunkMatrix) {
@@ -731,15 +770,26 @@
           token: state.token,
           timerSeconds: state.currentTimer,
           retentionDays: state.currentRetention,
-          onProgress: (percent, loaded, total) => {
-            el.progressBarFill.style.width = `${percent}%`;
-            el.progressPercentageText.textContent = `${percent}%`;
-            el.progressStatusSize.textContent = `${formatBytes(loaded)} / ${formatBytes(total)}`;
+          onProgress: (filePercent, fileLoaded, fileTotal) => {
+            const currentTotalLoaded = completedBytes + Math.min(fileLoaded, file.size);
+            maxOverallLoaded = Math.max(maxOverallLoaded, currentTotalLoaded);
+
+            const batchPercent = totalBatchBytes > 0
+              ? Math.min(100, Math.round((maxOverallLoaded / totalBatchBytes) * 100))
+              : filePercent;
+
+            // Strictly monotonic: percentage can NEVER drop backwards!
+            maxOverallPercent = Math.max(maxOverallPercent, batchPercent);
+            el.progressBarFill.style.width = `${maxOverallPercent}%`;
+            el.progressPercentageText.textContent = `${maxOverallPercent}%`;
+            el.progressStatusSize.textContent = `${formatBytes(maxOverallLoaded)} / ${formatBytes(totalBatchBytes)}`;
           },
           onSpeed: (speed, etaSeconds, concurrency) => {
             const mbps = ((speed * 8) / (1024 * 1024)).toFixed(1);
             el.progressStatusSpeed.textContent = `${formatBytes(speed)}/s (${mbps} Mbps)`;
-            if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(etaSeconds)}`;
+            const remainingBatchBytes = Math.max(0, totalBatchBytes - maxOverallLoaded);
+            const batchEta = speed > 0 ? Math.ceil(remainingBatchBytes / speed) : etaSeconds;
+            if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(batchEta)}`;
             if (el.xerEngineThreads) el.xerEngineThreads.textContent = `${concurrency}x Parallel Pipelines`;
           },
           onChunkDone: (chunkIdx, total, completed) => {
@@ -765,11 +815,20 @@
             }
           },
           onComplete: (record) => {
-            showToast('Upload completed successfully!', 'success');
-            setTimeout(() => {
-              el.uploadProgressPanel.classList.add('hidden');
-              if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
-            }, 1200);
+            completedBytes += file.size;
+            maxOverallLoaded = Math.max(maxOverallLoaded, completedBytes);
+            const batchP = totalBatchBytes > 0 ? Math.min(100, Math.round((completedBytes / totalBatchBytes) * 100)) : 100;
+            maxOverallPercent = Math.max(maxOverallPercent, batchP);
+            el.progressBarFill.style.width = `${maxOverallPercent}%`;
+            el.progressPercentageText.textContent = `${maxOverallPercent}%`;
+
+            showToast(isMulti ? `File [${i + 1}/${filesList.length}] uploaded successfully!` : 'Upload completed successfully!', 'success');
+            if (i === filesList.length - 1) {
+              setTimeout(() => {
+                el.uploadProgressPanel.classList.add('hidden');
+                if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
+              }, 1200);
+            }
 
             if (record) {
               openShareModal(record);
@@ -831,23 +890,28 @@
     const speedMeter = createSpeedMeter(1.5);
     const startTime = Date.now();
     const xhr = new XMLHttpRequest();
+    let maxFolderPercent = 0;
+    let maxFolderLoaded = 0;
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
-        const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
-        el.progressBarFill.style.width = `${percent}%`;
-        el.progressPercentageText.textContent = `${percent}%`;
+        const calculatedPercent = Math.min(100, Math.round((e.loaded / e.total) * 100));
+        maxFolderPercent = Math.max(maxFolderPercent, calculatedPercent);
+        maxFolderLoaded = Math.max(maxFolderLoaded, e.loaded);
 
-        const instantSpeed = speedMeter.record(e.loaded);
+        el.progressBarFill.style.width = `${maxFolderPercent}%`;
+        el.progressPercentageText.textContent = `${maxFolderPercent}%`;
+        el.progressStatusSize.textContent = `${formatBytes(maxFolderLoaded)} / ${formatBytes(e.total)}`;
+
+        const instantSpeed = speedMeter.record(maxFolderLoaded);
         const now = Date.now();
         const effectiveSpeed = instantSpeed > 0 
           ? instantSpeed 
-          : (e.loaded / ((now - startTime) / 1000 || 1));
+          : (maxFolderLoaded / ((now - startTime) / 1000 || 1));
 
         const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
         el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
-        el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
-        const remaining = Math.max(0, e.total - e.loaded);
+        const remaining = Math.max(0, e.total - maxFolderLoaded);
         const eta = effectiveSpeed > 0 ? Math.ceil(remaining / effectiveSpeed) : 0;
         if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(eta)}`;
       }
