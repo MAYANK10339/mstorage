@@ -13,6 +13,7 @@
     user: JSON.parse(localStorage.getItem('mst_user') || 'null'),
     currentTimer: 0,
     currentRetention: 0,
+    uploadMode: 'turbo', // 'turbo' | 'direct'
     files: [],
     activeDownloadFile: null,
     pendingDeleteId: null,
@@ -53,6 +54,7 @@
     inputFiles: document.getElementById('input-files'),
     inputZip: document.getElementById('input-zip'),
     inputFolder: document.getElementById('input-folder'),
+    uploadModeSelector: document.getElementById('upload-mode-selector'),
     timerSelector: document.getElementById('timer-selector'),
     selectRetention: document.getElementById('select-retention'),
 
@@ -429,9 +431,23 @@
     el.inputFolder.addEventListener('change', (e) => {
       if (e.target.files.length) {
         const folderName = getFolderNameFromFiles(e.target.files);
-        uploadFileList(e.target.files, 'folder', folderName);
+        uploadFolderBundle(e.target.files, folderName);
       }
     });
+
+    // Upload Engine Mode Selector (Turbo Chunks vs Direct Stream)
+    if (el.uploadModeSelector) {
+      el.uploadModeSelector.addEventListener('click', (e) => {
+        const btn = e.target.closest('.pill-btn');
+        if (!btn) return;
+        el.uploadModeSelector.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.uploadMode = btn.getAttribute('data-mode') || 'turbo';
+        showToast(state.uploadMode === 'turbo' 
+          ? '⚡ Turbo Parallel Chunks Active (Maximum Multi-Stream Speed)' 
+          : '🛡️ Direct Single-Stream Active (100% Solid & Zero Slicing)', 'info');
+      });
+    }
 
     // Drag & Drop
     el.dropzone.addEventListener('dragover', (e) => {
@@ -503,14 +519,117 @@
     if (!files || files.length === 0) return;
     if (!ensureAuth()) return;
 
-    // Folder upload with multiple items: use multi-file bundle endpoint
-    if (uploadType === 'folder' && files.length > 1) {
+    // Folder upload with multi-file directory bundle
+    if (uploadType === 'folder') {
       uploadFolderBundle(files, folderName);
       return;
     }
 
-    // Single or individual files / zip: Run through XerEngine Turbo
+    // Direct Single-Stream Mode (Normal / Raw)
+    if (state.uploadMode === 'direct') {
+      await uploadWithDirectStream(Array.from(files));
+      return;
+    }
+
+    // Turbo Parallel Chunks Mode (XerEngine Ultra-Stream)
     await uploadWithXerEngine(Array.from(files));
+  }
+
+  async function uploadWithDirectStream(filesList) {
+    for (let i = 0; i < filesList.length; i++) {
+      const file = filesList[i];
+      const isMulti = filesList.length > 1;
+
+      el.uploadProgressPanel.classList.remove('hidden');
+      if (el.xerMatrixWrap) el.xerMatrixWrap.classList.add('hidden');
+      if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
+      if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Streaming';
+      if (el.xerEngineThreads) el.xerEngineThreads.textContent = 'Direct Stream (Normal)';
+
+      el.progressBarFill.style.width = '0%';
+      el.progressPercentageText.textContent = '0%';
+      el.progressFileName.textContent = isMulti ? `[${i + 1}/${filesList.length}] ${file.name}` : file.name;
+      el.progressStatusSpeed.textContent = 'Initiating direct stream...';
+      el.progressStatusSize.textContent = `0 MB / ${formatBytes(file.size)}`;
+      if (el.xerEtaChip) el.xerEtaChip.textContent = 'ETA: --';
+
+      await new Promise((resolve) => {
+        const formData = new FormData();
+        formData.append('files', file);
+        const isZip = file.name.toLowerCase().endsWith('.zip');
+        formData.append('uploadType', isZip ? 'zip' : 'file');
+        formData.append('timerSeconds', state.currentTimer);
+        formData.append('retentionDays', state.currentRetention);
+
+        const startTime = Date.now();
+        let lastTime = startTime;
+        let lastLoaded = 0;
+        let rollingSpeed = 0;
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
+            el.progressBarFill.style.width = `${percent}%`;
+            el.progressPercentageText.textContent = `${percent}%`;
+            el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
+
+            const now = Date.now();
+            const timeDiff = (now - lastTime) / 1000;
+            if (timeDiff >= 0.25) {
+              const bytesDiff = e.loaded - lastLoaded;
+              const currentSpeed = bytesDiff / timeDiff;
+              rollingSpeed = rollingSpeed === 0 ? currentSpeed : (rollingSpeed * 0.35 + currentSpeed * 0.65);
+              lastTime = now;
+              lastLoaded = e.loaded;
+            }
+
+            const effectiveSpeed = rollingSpeed > 0 ? rollingSpeed : (e.loaded / ((now - startTime) / 1000 || 1));
+            const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
+            el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
+            const remaining = Math.max(0, e.total - e.loaded);
+            const eta = effectiveSpeed > 0 ? Math.ceil(remaining / effectiveSpeed) : 0;
+            if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(eta)}`;
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200 || xhr.status === 201) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              showToast('Direct stream upload completed!', 'success');
+              setTimeout(() => {
+                el.uploadProgressPanel.classList.add('hidden');
+              }, 900);
+              if (data.files && data.files.length > 0) {
+                openShareModal(data.files[0]);
+              }
+              loadUserFiles();
+            } catch (e) {
+              showToast('Upload finished', 'info');
+            }
+          } else {
+            showToast(`Direct upload failed: ${xhr.statusText || xhr.status}`, 'error');
+            el.uploadProgressPanel.classList.add('hidden');
+          }
+          resolve();
+        });
+
+        xhr.addEventListener('error', () => {
+          showToast('Network error during upload', 'error');
+          el.uploadProgressPanel.classList.add('hidden');
+          resolve();
+        });
+
+        xhr.open('POST', '/api/files/upload', true);
+        xhr.setRequestHeader('Authorization', `Bearer ${state.token}`);
+        xhr.send(formData);
+      });
+    }
+
+    el.inputFiles.value = '';
+    el.inputZip.value = '';
+    el.inputFolder.value = '';
   }
 
   async function uploadWithXerEngine(filesList) {
@@ -624,22 +743,35 @@
   }
 
   function uploadFolderBundle(files, folderName) {
+    if (!ensureAuth()) return;
+    const fileList = Array.from(files);
+    if (fileList.length === 0) return;
+
+    const detectedFolderName = folderName || getFolderNameFromFiles(fileList);
     const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]);
+    const relativePaths = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const f = fileList[i];
+      const relPath = f.webkitRelativePath || f.name;
+      relativePaths.push(relPath);
+      formData.append('files', f, relPath);
     }
+
     formData.append('uploadType', 'folder');
-    formData.append('folderName', folderName || files[0].name);
+    formData.append('folderName', detectedFolderName);
+    formData.append('relativePaths', JSON.stringify(relativePaths));
     formData.append('timerSeconds', state.currentTimer);
     formData.append('retentionDays', state.currentRetention);
 
     el.uploadProgressPanel.classList.remove('hidden');
     if (el.xerMatrixWrap) el.xerMatrixWrap.classList.add('hidden');
     if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
-    el.progressFileName.textContent = `Uploading folder: ${folderName} (${files.length} items)`;
+    el.progressFileName.textContent = `Uploading folder: ${detectedFolderName} (${fileList.length} items)`;
     el.progressBarFill.style.width = '0%';
     el.progressPercentageText.textContent = '0%';
     el.progressStatusSpeed.textContent = 'Streaming multi-file folder archive...';
+    if (el.xerEngineThreads) el.xerEngineThreads.textContent = `Folder Bundle (${fileList.length} items)`;
 
     const startTime = Date.now();
     let lastTime = startTime;
@@ -649,7 +781,7 @@
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
-        const percent = Math.round((e.loaded / e.total) * 100);
+        const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
         el.progressBarFill.style.width = `${percent}%`;
         el.progressPercentageText.textContent = `${percent}%`;
 
@@ -667,6 +799,9 @@
         const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
         el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
         el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
+        const remaining = Math.max(0, e.total - e.loaded);
+        const eta = effectiveSpeed > 0 ? Math.ceil(remaining / effectiveSpeed) : 0;
+        if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(eta)}`;
       }
     });
 
@@ -675,7 +810,7 @@
         if (xhr.status === 200 || xhr.status === 201) {
           try {
             const data = JSON.parse(xhr.responseText);
-            showToast('Folder uploaded successfully!', 'success');
+            showToast(`Folder "${detectedFolderName}" uploaded successfully!`, 'success');
             setTimeout(() => {
               el.uploadProgressPanel.classList.add('hidden');
             }, 800);
@@ -1319,133 +1454,6 @@
     }
 
     fetchSystemStats();
-    setupVipModal();
-  }
-
-  function setupVipModal() {
-    const upiModal = document.getElementById('upi-vip-modal');
-    const btnCloseUpi = document.getElementById('btn-close-upi-modal');
-    const modalPlanTitle = document.getElementById('vip-modal-title');
-    const modalPlanAmount = document.getElementById('modal-plan-amount');
-    const qrImage = document.getElementById('upi-qr-image');
-    const btnSimulateValid = document.getElementById('btn-simulate-valid-pay');
-    const btnSimulateFake = document.getElementById('btn-simulate-fake-pay');
-    const resultBox = document.getElementById('simulate-result-box');
-
-    let activePlanName = 'Pro Plan';
-    let activePlanPrice = '99';
-    let activePlanDuration = '7 Weeks';
-
-    function openModalWithPlan(plan, price, duration) {
-      activePlanName = plan || 'Pro Plan';
-      activePlanPrice = price || '99';
-      activePlanDuration = duration || '7 Weeks';
-
-      if (modalPlanTitle) {
-        modalPlanTitle.textContent = `${activePlanName} (Coming Soon)`;
-      }
-      if (modalPlanAmount) {
-        modalPlanAmount.innerHTML = `&inr;${activePlanPrice} <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">/ ${activePlanDuration}</span>`;
-      }
-      if (qrImage) {
-        const qrTargetUrl = `${window.location.origin}/api/payment/auto-detect?plan=${encodeURIComponent(activePlanName)}&amt=${encodeURIComponent(activePlanPrice)}`;
-        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrTargetUrl)}`;
-      }
-      if (resultBox) {
-        resultBox.className = 'hidden';
-        resultBox.innerHTML = '';
-      }
-      if (upiModal) {
-        upiModal.classList.remove('hidden');
-      }
-    }
-
-    // Attach to all plan trigger buttons
-    document.querySelectorAll('.btn-plan-trigger').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const plan = btn.getAttribute('data-plan') || 'Pro Plan';
-        const price = btn.getAttribute('data-price') || '99';
-        const duration = btn.getAttribute('data-duration') || '7 Weeks';
-        openModalWithPlan(plan, price, duration);
-      });
-    });
-
-    // Close Modal
-    if (btnCloseUpi && upiModal) {
-      btnCloseUpi.addEventListener('click', () => {
-        upiModal.classList.add('hidden');
-      });
-      upiModal.addEventListener('click', (e) => {
-        if (e.target === upiModal) upiModal.classList.add('hidden');
-      });
-    }
-
-    // Simulate Valid Auto-Scan
-    if (btnSimulateValid && resultBox) {
-      btnSimulateValid.addEventListener('click', async () => {
-        btnSimulateValid.disabled = true;
-        btnSimulateValid.textContent = 'Scanning...';
-        try {
-          const res = await fetch('/api/payment/simulate-verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              simulateType: 'valid',
-              plan: activePlanName,
-              amount: activePlanPrice
-            })
-          });
-          const data = await res.json();
-          resultBox.className = '';
-          resultBox.innerHTML = `
-            <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 10px; color: #34d399;">
-              <strong style="display: block; margin-bottom: 4px; font-weight: 800;">✓ Auto-Detection Passed (Sandbox Approved)</strong>
-              <span>Bank payload verified. (Subscriptions are currently <strong>Coming Soon</strong> — all Mstorage cloud features are 100% Free &amp; Unlimited right now!)</span>
-            </div>
-          `;
-          showToast('Auto-detection verified: Valid sandbox payment!', 'success');
-        } catch (err) {
-          showToast('Simulation request error', 'error');
-        } finally {
-          btnSimulateValid.disabled = false;
-          btnSimulateValid.textContent = 'Simulate Auto-Scan';
-        }
-      });
-    }
-
-    // Simulate Fake / Spoofed PhonePe / GPay Scan (Auto-Fraud Detection)
-    if (btnSimulateFake && resultBox) {
-      btnSimulateFake.addEventListener('click', async () => {
-        btnSimulateFake.disabled = true;
-        btnSimulateFake.textContent = 'Detecting...';
-        try {
-          const res = await fetch('/api/payment/simulate-verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              simulateType: 'fake_spoof',
-              plan: activePlanName,
-              amount: activePlanPrice
-            })
-          });
-          const data = await res.json();
-          resultBox.className = '';
-          resultBox.innerHTML = `
-            <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px; color: #f87171;">
-              <strong style="display: block; margin-bottom: 4px; font-weight: 800;">🚨 AUTO-FRAUD DETECTED: Fake Payment Rejected!</strong>
-              <span>${escapeHtml(data.reason || 'Spoofed Transaction ID or fake app detected. Payment rejected.')}</span>
-            </div>
-          `;
-          showToast('Auto-Fraud Shield: Fake payment detected and rejected!', 'error');
-        } catch (err) {
-          showToast('Simulation request error', 'error');
-        } finally {
-          btnSimulateFake.disabled = false;
-          btnSimulateFake.textContent = 'Detect Fake App Scan';
-        }
-      });
-    }
   }
 
   async function fetchSystemStats() {

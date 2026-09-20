@@ -2346,75 +2346,85 @@ button, input, select {
   }
 }
 
-/* Adsterra Sponsor Banner Container */
-.ad-banner-container {
+/* Stream Guarantee Card (100% Free & Clean Stream Guarantee) */
+.stream-guarantee-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  margin: 22px auto;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(6, 182, 212, 0.06);
+  border: 1px solid rgba(6, 182, 212, 0.28);
   border-radius: var(--radius-md);
-  max-width: 760px;
-  width: 100%;
-  box-sizing: border-box;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
+  margin: 20px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  text-align: left;
 }
 
-.ad-label {
-  font-size: 0.65rem;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-  margin-bottom: 8px;
+.stream-guarantee-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stream-guarantee-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(6, 182, 212, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stream-guarantee-info h4 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 2px;
+}
+
+.stream-guarantee-info p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.stream-guarantee-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  padding: 5px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+/* Upload Engine Mode Selector (Desktop & Global) */
+#upload-mode-selector {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.ad-frame-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  overflow: hidden;
+#upload-mode-selector .pill-btn {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
 }
 
-.ad-frame-wrap iframe {
-  border: none !important;
-  border-radius: 6px;
-  max-width: 100%;
-}
-
-/* 300x250 Adsterra Unit (Optimal for Download Card & Mobile Screens) */
-.ad-banner-300 {
-  max-width: 340px;
-  min-height: 280px;
-  padding: 12px 14px;
-  margin: 18px auto;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.ad-frame-wrap-300 {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  min-height: 250px;
-  overflow: hidden;
-}
-
-.ad-frame-wrap-300 iframe {
-  border: none !important;
-  border-radius: 8px;
-  width: 300px !important;
-  height: 250px !important;
-  max-width: 100%;
+#upload-mode-selector .pill-btn.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
 }
 
 /* ===================================================================
@@ -2613,8 +2623,8 @@ button, input, select {
   .upload-options-bar {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-    padding: 12px;
+    gap: 14px;
+    padding: 14px;
     margin-top: 16px;
   }
 
@@ -2626,7 +2636,33 @@ button, input, select {
   }
 
   .option-icon-label {
-    font-size: 0.82rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+  }
+
+  /* Dedicated 2-column grid for upload engine mode */
+  #upload-mode-selector {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+  }
+
+  #upload-mode-selector .pill-btn {
+    width: 100%;
+    padding: 10px 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 6px;
+    box-sizing: border-box;
   }
 
   /* Perfect 5-column grid fit for expiry timer pills */
@@ -3066,40 +3102,23 @@ button, input, select {
     text-align: center;
   }
 
-  /* Adsterra responsive scaling on mobile */
-  .ad-banner-container {
-    padding: 8px 4px;
-    margin: 16px auto;
-    border-radius: var(--radius-sm);
-    width: 100%;
-    overflow: hidden;
+  /* Stream guarantee card on mobile */
+  .stream-guarantee-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    padding: 14px;
   }
 
-  .ad-frame-wrap {
-    overflow: hidden;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 90px;
-  }
-
-  .ad-frame-wrap iframe {
-    transform: scale(calc((100vw - 32px) / 728));
-    transform-origin: center center;
+  .stream-guarantee-left {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
   }
 }
 
 /* 3. ULTRA-NARROW MOBILE PHONES (max-width: 380px) */
 @media (max-width: 380px) {
-  .ad-frame-wrap {
-    height: 65px;
-  }
-
-  .ad-frame-wrap iframe {
-    transform: scale(calc((100vw - 20px) / 728));
-    transform-origin: center center;
-  }
   .header-container {
     padding: 6px 8px;
     gap: 8px;

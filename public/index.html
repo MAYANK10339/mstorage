@@ -163,7 +163,6 @@
           <a href="#upload-section" class="nav-link">Upload</a>
           <a href="#vault-section" class="nav-link">My Vault</a>
           <a href="#comparison-section" class="nav-link">Compare</a>
-          <a href="#plans-section" class="nav-link">VIP Plans</a>
           <a href="#about-section" class="nav-link">About</a>
         </nav>
 
@@ -244,16 +243,6 @@
           <div class="drawer-nav-text">
             <strong>Compare Clouds</strong>
             <span>Mstorage vs Google Drive vs MediaFire</span>
-          </div>
-        </a>
-
-        <a href="#plans-section" class="drawer-nav-link" data-drawer-nav="plans">
-          <div class="drawer-nav-icon">
-            <svg class="svg-icon svg-sm"><use href="#icon-zap"/></svg>
-          </div>
-          <div class="drawer-nav-text">
-            <strong>VIP Subscription</strong>
-            <span>0s Download &bull; 100% Ad-Free</span>
           </div>
         </a>
 
@@ -340,19 +329,18 @@
           <div id="dl-folder-items-list" class="folder-items-list"></div>
         </div>
 
-        <!-- Clean Sponsor & Speed Vault Badge (Adsterra Code Completely Removed) -->
-        <div class="ad-banner-container ad-banner-300" id="sponsor-vip-card">
-          <span class="ad-label">Verified Clean Stream</span>
-          <div class="vip-sponsor-box">
-            <div class="vip-sponsor-icon">
-              <svg class="svg-icon svg-md"><use href="#icon-zap"/></svg>
+        <!-- 100% Free & Clean Stream Guarantee Badge -->
+        <div class="stream-guarantee-card" id="stream-guarantee-card">
+          <div class="stream-guarantee-left">
+            <div class="stream-guarantee-icon">
+              <svg class="svg-icon svg-md" style="color: var(--cyan);"><use href="#icon-zap"/></svg>
             </div>
-            <div class="vip-sponsor-info">
-              <h4>Direct Pipe via XerVault</h4>
-              <p>100% malware-free, direct streaming pipeline.</p>
-              <a href="#plans-section" class="vip-mini-link">All Plans 100% Free &amp; Ad-Free Right Now &rarr;</a>
+            <div class="stream-guarantee-info">
+              <h4>100% Free &amp; Uncapped Bandwidth</h4>
+              <p>Direct pipe via XerVault Cloud &bull; Zero popups &bull; Zero spam</p>
             </div>
           </div>
+          <div class="stream-guarantee-badge">100% FREE &bull; 0 ADS</div>
         </div>
 
         <!-- Direct Download Action Button -->
@@ -438,8 +426,20 @@
             </div>
           </div>
 
-          <!-- Upload Options Bar (Timer & Retention Settings) -->
+          <!-- Upload Options Bar (Engine Mode, Timer & Retention Settings) -->
           <div class="upload-options-bar">
+            <!-- Upload Engine Mode Selector -->
+            <div class="option-control">
+              <div class="option-icon-label">
+                <svg class="svg-icon svg-sm" style="color: #60a5fa;"><use href="#icon-speed"/></svg>
+                <span>Upload Engine:</span>
+              </div>
+              <div class="pill-selectors" id="upload-mode-selector">
+                <button type="button" class="pill-btn active" data-mode="turbo" title="Multi-Stream Sliced Chunks for Maximum Speed">⚡ Turbo Chunks</button>
+                <button type="button" class="pill-btn" data-mode="direct" title="Direct Single-Stream Raw Upload (100% Solid &amp; Zero Slicing)">🛡️ Direct Stream (Normal)</button>
+              </div>
+            </div>
+
             <!-- Timer Config -->
             <div class="option-control">
               <div class="option-icon-label">
@@ -699,186 +699,6 @@
         </div>
       </section>
 
-      <!-- SUBSCRIPTION & VIP PLANS SECTION -->
-      <section id="plans-section" class="section plans-section">
-        <div class="plans-container">
-          <div class="section-header text-center">
-            <div class="badge-pill">
-              <svg class="svg-icon svg-xs"><use href="#icon-zap"/></svg>
-              <span>Monetization &amp; Memberships</span>
-            </div>
-            <h2 class="section-title">Transparent &amp; Affordable Cloud Plans</h2>
-            <p class="section-subtitle">
-              Enjoy free storage forever, or upgrade to VIP for 0-second instant downloads and 100% ad-free experience.
-            </p>
-          </div>
-
-          <div class="plans-grid">
-            <!-- Plan 1: Basic Plan -->
-            <div class="plan-card">
-              <div class="plan-header">
-                <div class="plan-tag plan-tag-free">Basic Plan</div>
-                <h3 class="plan-name">3-Day Pass</h3>
-                <div class="plan-price">
-                  <span class="currency">&inr;</span><span class="amount">49</span>
-                  <span class="period">/ 3 days</span>
-                </div>
-                <p class="plan-desc">Fast 3-day cloud pass for urgent file transfers.</p>
-              </div>
-
-              <ul class="plan-features">
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>3 Days High-Speed Access</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>100% Ad-Free Experience</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>XerVault Cloud Storage</span>
-                </li>
-                <li class="plan-feature neutral">
-                  <svg class="svg-icon svg-sm"><use href="#icon-lock"/></svg>
-                  <span>4-Digit PIN Security</span>
-                </li>
-              </ul>
-
-              <div class="plan-action">
-                <button type="button" class="btn btn-secondary btn-block btn-plan-trigger" data-plan="Basic Plan" data-price="49" data-duration="3 Days">
-                  Coming Soon (Free Now)
-                </button>
-              </div>
-            </div>
-
-            <!-- Plan 2: Pro Plan (Popular) -->
-            <div class="plan-card plan-card-vip">
-              <div class="plan-badge-popular">MOST POPULAR</div>
-              <div class="plan-header">
-                <div class="plan-tag plan-tag-vip">Pro Plan</div>
-                <h3 class="plan-name">7-Week Pass</h3>
-                <div class="plan-price">
-                  <span class="currency">&inr;</span><span class="amount">99</span>
-                  <span class="period">/ 7 weeks (49 days)</span>
-                </div>
-                <p class="plan-desc">Extended VIP power pass with instant 0s streaming.</p>
-              </div>
-
-              <ul class="plan-features">
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <strong>0s Instant Download (Skip All Timers)</strong>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <strong>100% Ad-Free Pure Obsidian Theme</strong>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Priority XerEngine Turbo Bandwidth</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Golden VIP Profile Badge</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-zap"/></svg>
-                  <span>Smart Auto-Detect Payment Gateway</span>
-                </li>
-              </ul>
-
-              <div class="plan-action">
-                <button type="button" class="btn btn-primary btn-block btn-vip-upgrade btn-plan-trigger" data-plan="Pro Plan" data-price="99" data-duration="7 Weeks">
-                  <svg class="svg-icon svg-sm"><use href="#icon-zap"/></svg>
-                  <span>Coming Soon (Free Now)</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Plan 3: Ultimate Plan (Best Value for Money) -->
-            <div class="plan-card plan-card-vip" style="border-color: rgba(96, 165, 250, 0.4);">
-              <div class="plan-badge-popular" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff;">BEST VALUE FOR MONEY</div>
-              <div class="plan-header">
-                <div class="plan-tag" style="background: rgba(59, 130, 246, 0.18); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">Ultimate Plan</div>
-                <h3 class="plan-name">Monthly Master</h3>
-                <div class="plan-price">
-                  <span class="currency">&inr;</span><span class="amount">499</span>
-                  <span class="period">/ month</span>
-                </div>
-                <p class="plan-desc">Maximum bandwidth pipeline &amp; infinite cloud vault storage.</p>
-              </div>
-
-              <ul class="plan-features">
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <strong>Infinite XerVault Scalable Storage</strong>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <strong>0s Downloads &bull; Zero Waiting</strong>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Dedicated Ultra-Stream CDN Routing</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Crown VIP Badge on Profile</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-server"/></svg>
-                  <span>Unthrottled Upload &amp; Download Speed</span>
-                </li>
-              </ul>
-
-              <div class="plan-action">
-                <button type="button" class="btn btn-secondary btn-block btn-plan-trigger" data-plan="Ultimate Plan" data-price="499" data-duration="1 Month">
-                  Coming Soon (Free Now)
-                </button>
-              </div>
-            </div>
-
-            <!-- Plan 4: Creator / Master Admin Pass -->
-            <div class="plan-card plan-card-creator">
-              <div class="plan-header">
-                <div class="plan-tag plan-tag-creator">Platform Creator</div>
-                <h3 class="plan-name">Master Admin Pass</h3>
-                <div class="plan-price">
-                  <span class="currency">&inr;</span><span class="amount">0</span>
-                  <span class="period">/ forever</span>
-                </div>
-                <p class="plan-desc">Exclusive master privileges for creator account @mayankxer.</p>
-              </div>
-
-              <ul class="plan-features">
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Permanent Unlimited VIP &bull; 0 Ads &bull; 0 Timers</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Full XerVault Cloud Server Controls</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Master File Delete &amp; Global Authority</span>
-                </li>
-                <li class="plan-feature positive">
-                  <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
-                  <span>Active for @mayankxer (PIN: 7860)</span>
-                </li>
-              </ul>
-
-              <div class="plan-action">
-                <div class="creator-status-box">
-                  <span class="live-dot"></span>
-                  <span>Master Admin Plan Active</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- About Section & Developer Spotlight -->
@@ -1151,79 +971,11 @@
       <svg class="svg-icon svg-sm"><use href="#icon-check"/></svg>
       <span>Compare</span>
     </a>
-    <a href="#plans-section" class="mobile-nav-item" data-nav="plans">
-      <svg class="svg-icon svg-sm"><use href="#icon-zap"/></svg>
-      <span>VIP</span>
-    </a>
     <a href="#about-section" class="mobile-nav-item" data-nav="about">
       <svg class="svg-icon svg-sm"><use href="#icon-user"/></svg>
       <span>About</span>
     </a>
   </nav>
-
-  <!-- UPI VIP Upgrade Modal (Smart Auto-Detection & Sandbox Simulator) -->
-  <div id="upi-vip-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <button id="btn-close-upi-modal" class="modal-close-btn" aria-label="Close">
-        <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
-      </button>
-
-      <div class="modal-header text-center">
-        <div class="modal-icon-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); margin: 0 auto 12px;">
-          <svg class="svg-icon"><use href="#icon-zap"/></svg>
-        </div>
-        <h3 id="vip-modal-title">Mstorage Cloud VIP Pass</h3>
-        <p id="vip-modal-desc">Instant 0s Download, Zero Ads, and VIP Profile Badge.</p>
-      </div>
-
-      <div class="upi-modal-body" style="text-align: center; padding: 10px 0;">
-        <div class="upi-amount-pill" style="display: inline-block; padding: 6px 16px; border-radius: 999px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); margin-bottom: 12px;">
-          <span style="font-size: 0.88rem; font-weight: 800; color: #60a5fa;" id="modal-plan-badge">CURRENTLY 100% FREE FOR EVERYONE</span>
-        </div>
-
-        <div style="font-size: 1.4rem; font-weight: 800; color: #fbbf24; margin-bottom: 4px;" id="modal-plan-amount">
-          &inr;99 <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">/ 7 Weeks</span>
-        </div>
-
-        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
-          Payment Gateway Integration: <strong style="color: #60a5fa;">Coming Soon</strong><br>
-          Test the Smart Auto-Detect &amp; Fraud Shield Scanner below:
-        </p>
-
-        <!-- Smart Auto-Detect QR (No personal UPI ID) -->
-        <div style="background: #ffffff; padding: 12px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.5); margin-bottom: 12px;">
-          <img id="upi-qr-image" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://mstorage.xer/api/payment/auto-detect" alt="Smart Auto-Detect QR" style="width: 150px; height: 150px; display: block;">
-        </div>
-
-        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; text-align: left;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 0.78rem; font-weight: 700; color: #94a3b8;">AUTO-FRAUD SHIELD:</span>
-            <span style="font-size: 0.72rem; font-weight: 800; color: #34d399; background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 4px;">ACTIVE &bull; 0 DELAY</span>
-          </div>
-          <p style="font-size: 0.76rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
-            Live webhook validator rejects fake PhonePe / GPay screenshots or spoof apps.
-          </p>
-        </div>
-
-        <!-- Interactive Sandbox Detection Test Buttons -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-          <button type="button" id="btn-simulate-valid-pay" class="btn btn-secondary" style="font-size: 0.76rem; padding: 8px 6px;">
-            Simulate Auto-Scan
-          </button>
-          <button type="button" id="btn-simulate-fake-pay" class="btn btn-secondary" style="font-size: 0.76rem; padding: 8px 6px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">
-            Detect Fake App Scan
-          </button>
-        </div>
-
-        <!-- Detection Status Result Display -->
-        <div id="simulate-result-box" class="hidden" style="padding: 10px; border-radius: 8px; font-size: 0.78rem; margin-bottom: 10px; text-align: left; line-height: 1.4;"></div>
-
-        <p style="font-size: 0.76rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
-          Master Creator Account: <strong>@mayankxer</strong> (PIN: <strong>7860</strong>) has permanent active Admin access.
-        </p>
-      </div>
-    </div>
-  </div>
 
   <!-- Scripts: App Core & XerEngine -->
   <script src="/js/xerengine.js"></script>
