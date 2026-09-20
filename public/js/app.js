@@ -189,6 +189,43 @@
       .replace(/'/g, '&#039;');
   }
 
+  /**
+   * 1.5s Sliding Window + Exponential Moving Average (EMA) Speed Tracker
+   * Prevents artificial speed dropouts to 0 KB/s during browser TCP packet bursts
+   */
+  function createSpeedMeter(windowSec = 1.5) {
+    const samples = [];
+    let emaSpeed = 0;
+    const alpha = 0.25;
+
+    return {
+      record(loaded) {
+        const now = Date.now();
+        samples.push({ time: now, loaded });
+        const cutoff = now - (windowSec * 1000);
+        while (samples.length > 2 && samples[0].time < cutoff) {
+          samples.shift();
+        }
+
+        if (samples.length < 2) return emaSpeed;
+        const oldest = samples[0];
+        const newest = samples[samples.length - 1];
+        const timeDiffSec = (newest.time - oldest.time) / 1000;
+        if (timeDiffSec <= 0.05) return emaSpeed;
+
+        const bytesDiff = Math.max(0, newest.loaded - oldest.loaded);
+        const windowSpeed = bytesDiff / timeDiffSec;
+
+        if (emaSpeed === 0) {
+          emaSpeed = windowSpeed;
+        } else {
+          emaSpeed = (alpha * windowSpeed) + ((1 - alpha) * emaSpeed);
+        }
+        return emaSpeed;
+      }
+    };
+  }
+
   // -----------------------------------------------------------------
   // AUTHENTICATION & SESSION
   // -----------------------------------------------------------------
@@ -214,10 +251,9 @@
     if (state.token && state.user) {
       const uName = (state.user.username || '').toLowerCase();
       const isAdmin = uName === 'mayankxer' || state.user.role === 'admin';
-      const isVipUser = isAdmin || state.user.isVip;
       const badgeHtml = isAdmin 
         ? `<span class="user-role-badge-admin" style="font-size: 0.65rem; font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; padding: 2px 6px; border-radius: 4px; margin-left: 4px; letter-spacing: 0.5px;">ADMIN</span>`
-        : (isVipUser ? `<span class="user-role-badge-vip" style="font-size: 0.65rem; font-weight: 800; background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 2px 6px; border-radius: 4px; margin-left: 4px; border: 1px solid rgba(245, 158, 11, 0.4);">VIP</span>` : '');
+        : `<span class="user-role-badge-free" style="font-size: 0.65rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 2px 6px; border-radius: 4px; margin-left: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">FREE</span>`;
 
       el.authStateContainer.innerHTML = `
         <div class="user-profile-pill">
@@ -255,7 +291,7 @@
     if (state.token && state.user) {
       const uName = (state.user.username || '').toLowerCase();
       const isAdmin = uName === 'mayankxer' || state.user.role === 'admin';
-      const roleText = isAdmin ? 'Master Creator • Admin Active' : (state.user.isVip ? 'VIP Member • 0s Stream' : 'Signed In • PRO Vault');
+      const roleText = isAdmin ? 'Master Creator • Admin Active' : 'Free Member • Unlimited Vault';
 
       el.drawerAuthSection.innerHTML = `
         <div class="drawer-user-card">
@@ -407,7 +443,47 @@
   // -----------------------------------------------------------------
   // FILE UPLOADS (Files, Zip, Folder)
   // -----------------------------------------------------------------
+  function setUploadMode(mode) {
+    state.uploadMode = mode === 'direct' ? 'direct' : 'turbo';
+
+    // Synchronize mode card buttons
+    const btnTurbo = document.getElementById('btn-mode-turbo');
+    const btnDirect = document.getElementById('btn-mode-direct');
+    if (btnTurbo) btnTurbo.classList.toggle('active', state.uploadMode === 'turbo');
+    if (btnDirect) btnDirect.classList.toggle('active', state.uploadMode === 'direct');
+
+    // Synchronize options bar pills
+    if (el.uploadModeSelector) {
+      el.uploadModeSelector.querySelectorAll('.pill-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-mode') === state.uploadMode);
+      });
+    }
+
+    showToast(state.uploadMode === 'turbo' 
+      ? '⚡ Parallel Upload (Chunks me) Active — High-speed parallel streams' 
+      : '🛡️ Full Upload (Ek hi file me) Active — Consistent steady wire speed', 'info');
+  }
+
   function setupUploadHandlers() {
+    // Mode Switcher Buttons (Parallel Chunks vs Full Direct Upload)
+    const btnTurbo = document.getElementById('btn-mode-turbo');
+    const btnDirect = document.getElementById('btn-mode-direct');
+    if (btnTurbo) {
+      btnTurbo.addEventListener('click', () => setUploadMode('turbo'));
+    }
+    if (btnDirect) {
+      btnDirect.addEventListener('click', () => setUploadMode('direct'));
+    }
+
+    // Upload Engine Mode Selector in options bar
+    if (el.uploadModeSelector) {
+      el.uploadModeSelector.addEventListener('click', (e) => {
+        const btn = e.target.closest('.pill-btn');
+        if (!btn) return;
+        setUploadMode(btn.getAttribute('data-mode') || 'turbo');
+      });
+    }
+
     el.btnSelectFiles.addEventListener('click', () => {
       if (ensureAuth()) el.inputFiles.click();
     });
@@ -434,20 +510,6 @@
         uploadFolderBundle(e.target.files, folderName);
       }
     });
-
-    // Upload Engine Mode Selector (Turbo Chunks vs Direct Stream)
-    if (el.uploadModeSelector) {
-      el.uploadModeSelector.addEventListener('click', (e) => {
-        const btn = e.target.closest('.pill-btn');
-        if (!btn) return;
-        el.uploadModeSelector.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.uploadMode = btn.getAttribute('data-mode') || 'turbo';
-        showToast(state.uploadMode === 'turbo' 
-          ? '⚡ Turbo Parallel Chunks Active (Maximum Multi-Stream Speed)' 
-          : '🛡️ Direct Single-Stream Active (100% Solid & Zero Slicing)', 'info');
-      });
-    }
 
     // Drag & Drop
     el.dropzone.addEventListener('dragover', (e) => {
@@ -561,10 +623,8 @@
         formData.append('timerSeconds', state.currentTimer);
         formData.append('retentionDays', state.currentRetention);
 
+        const speedMeter = createSpeedMeter(1.5);
         const startTime = Date.now();
-        let lastTime = startTime;
-        let lastLoaded = 0;
-        let rollingSpeed = 0;
         const xhr = new XMLHttpRequest();
 
         xhr.upload.addEventListener('progress', (e) => {
@@ -574,17 +634,12 @@
             el.progressPercentageText.textContent = `${percent}%`;
             el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
 
+            const instantSpeed = speedMeter.record(e.loaded);
             const now = Date.now();
-            const timeDiff = (now - lastTime) / 1000;
-            if (timeDiff >= 0.25) {
-              const bytesDiff = e.loaded - lastLoaded;
-              const currentSpeed = bytesDiff / timeDiff;
-              rollingSpeed = rollingSpeed === 0 ? currentSpeed : (rollingSpeed * 0.35 + currentSpeed * 0.65);
-              lastTime = now;
-              lastLoaded = e.loaded;
-            }
+            const effectiveSpeed = instantSpeed > 0 
+              ? instantSpeed 
+              : (e.loaded / ((now - startTime) / 1000 || 1));
 
-            const effectiveSpeed = rollingSpeed > 0 ? rollingSpeed : (e.loaded / ((now - startTime) / 1000 || 1));
             const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
             el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
             const remaining = Math.max(0, e.total - e.loaded);
@@ -773,10 +828,8 @@
     el.progressStatusSpeed.textContent = 'Streaming multi-file folder archive...';
     if (el.xerEngineThreads) el.xerEngineThreads.textContent = `Folder Bundle (${fileList.length} items)`;
 
+    const speedMeter = createSpeedMeter(1.5);
     const startTime = Date.now();
-    let lastTime = startTime;
-    let lastLoaded = 0;
-    let rollingSpeed = 0;
     const xhr = new XMLHttpRequest();
 
     xhr.upload.addEventListener('progress', (e) => {
@@ -785,17 +838,12 @@
         el.progressBarFill.style.width = `${percent}%`;
         el.progressPercentageText.textContent = `${percent}%`;
 
+        const instantSpeed = speedMeter.record(e.loaded);
         const now = Date.now();
-        const timeDiff = (now - lastTime) / 1000;
-        if (timeDiff >= 0.25) {
-          const bytesDiff = e.loaded - lastLoaded;
-          const currentSpeed = bytesDiff / timeDiff;
-          rollingSpeed = rollingSpeed === 0 ? currentSpeed : (rollingSpeed * 0.4 + currentSpeed * 0.6);
-          lastTime = now;
-          lastLoaded = e.loaded;
-        }
+        const effectiveSpeed = instantSpeed > 0 
+          ? instantSpeed 
+          : (e.loaded / ((now - startTime) / 1000 || 1));
 
-        const effectiveSpeed = rollingSpeed > 0 ? rollingSpeed : (e.loaded / ((now - startTime) / 1000 || 1));
         const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
         el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
         el.progressStatusSize.textContent = `${formatBytes(e.loaded)} / ${formatBytes(e.total)}`;
@@ -1208,11 +1256,11 @@
         el.dlFolderContents.classList.add('hidden');
       }
 
-      // Countdown Timer Logic (VIP & Creator Master bypasses all timers automatically)
+      // Countdown Timer Logic (Creator Master bypasses all timers automatically)
       const currentUsername = (state.user && state.user.username) ? String(state.user.username).toLowerCase() : '';
-      const isCreatorOrVip = currentUsername === 'mayank' || currentUsername === 'mayankxer' || currentUsername === 'mayank_mandrai_official' || (state.user && (state.user.isVip || state.user.role === 'admin'));
+      const isCreatorOrAdmin = currentUsername === 'mayank' || currentUsername === 'mayankxer' || currentUsername === 'mayank_mandrai_official' || (state.user && state.user.role === 'admin');
 
-      const timerSeconds = isCreatorOrVip ? 0 : (parseInt(file.timerSeconds, 10) || 0);
+      const timerSeconds = isCreatorOrAdmin ? 0 : (parseInt(file.timerSeconds, 10) || 0);
       if (timerSeconds > 0) {
         runDownloadTimer(timerSeconds, file.id);
       } else {

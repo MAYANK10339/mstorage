@@ -66,17 +66,17 @@
     const isSlowConn = conn && (conn.saveData || conn.effectiveType === '3g' || conn.effectiveType === '2g');
 
     if (fileSize < 20 * 1024 * 1024) {
-      // < 20 MB: small slices, snappy finish
-      return { chunkSize: 2 * 1024 * 1024, concurrency: isSlowConn ? 2 : 3 };
+      // < 20 MB: 2MB chunks, 2 parallel pipelines (zero bufferbloat)
+      return { chunkSize: 2 * 1024 * 1024, concurrency: 2 };
     } else if (fileSize < 100 * 1024 * 1024) {
-      // 20 MB - 100 MB
-      return { chunkSize: 4 * 1024 * 1024, concurrency: isSlowConn ? 2 : 3 };
+      // 20 MB - 100 MB: 4MB chunks, 2 parallel pipelines
+      return { chunkSize: 4 * 1024 * 1024, concurrency: 2 };
     } else if (fileSize < 1024 * 1024 * 1024) {
-      // 100 MB - 1 GB: 5MB chunks, 3-4 parallel streams (prevents network choke)
-      return { chunkSize: 5 * 1024 * 1024, concurrency: isSlowConn ? 2 : 4 };
+      // 100 MB - 1 GB: 4MB chunks, 2 parallel pipelines
+      return { chunkSize: 4 * 1024 * 1024, concurrency: isSlowConn ? 1 : 2 };
     } else {
-      // 1 GB - 100 GB+: 8MB optimal chunks with 3-4 workers (prevents TCP bufferbloat & packet drops on Render)
-      return { chunkSize: 8 * 1024 * 1024, concurrency: isSlowConn ? 2 : 4 };
+      // 1 GB+: 6MB chunks, 2 parallel pipelines for stable throughput
+      return { chunkSize: 6 * 1024 * 1024, concurrency: isSlowConn ? 1 : 2 };
     }
   }
 
@@ -377,27 +377,42 @@
 
     startSpeedLoop() {
       this.stopSpeedLoop();
+      this.speedSamples = [{ time: Date.now(), bytes: this.bytesLoaded }];
+      this.smoothedSpeed = 0;
+
       this.speedInterval = setInterval(() => {
         if (this.state !== 'uploading') return;
 
         const now = Date.now();
-        const timeDiff = (now - this.lastTime) / 1000;
+        this.speedSamples.push({ time: now, bytes: this.bytesLoaded });
 
-        if (timeDiff >= 0.25) {
-          const bytesDiff = this.bytesLoaded - this.lastLoaded;
-          const currentSpeed = Math.max(0, bytesDiff / timeDiff);
+        // Maintain 1.5s sliding window (eliminates burst drops and micro-stutters)
+        const cutoff = now - 1500;
+        while (this.speedSamples.length > 2 && this.speedSamples[0].time < cutoff) {
+          this.speedSamples.shift();
+        }
 
-          this.rollingSpeed = this.rollingSpeed === 0 
-            ? currentSpeed 
-            : (this.rollingSpeed * 0.35 + currentSpeed * 0.65);
+        if (this.speedSamples.length >= 2) {
+          const oldest = this.speedSamples[0];
+          const newest = this.speedSamples[this.speedSamples.length - 1];
+          const timeDelta = (newest.time - oldest.time) / 1000;
 
-          this.lastTime = now;
-          this.lastLoaded = this.bytesLoaded;
+          if (timeDelta >= 0.15) {
+            const bytesDelta = Math.max(0, newest.bytes - oldest.bytes);
+            const windowRate = bytesDelta / timeDelta;
 
-          if (typeof this.options.onSpeed === 'function') {
-            const remainingBytes = Math.max(0, this.file.size - this.bytesLoaded);
-            const etaSeconds = this.rollingSpeed > 0 ? Math.ceil(remainingBytes / this.rollingSpeed) : 0;
-            this.options.onSpeed(this.rollingSpeed, etaSeconds, this.concurrency);
+            if (this.smoothedSpeed === 0) {
+              this.smoothedSpeed = windowRate;
+            } else {
+              // 75% previous smooth + 25% window rate gives butter-smooth consistent display
+              this.smoothedSpeed = this.smoothedSpeed * 0.75 + windowRate * 0.25;
+            }
+
+            if (typeof this.options.onSpeed === 'function') {
+              const remainingBytes = Math.max(0, this.file.size - this.bytesLoaded);
+              const etaSeconds = this.smoothedSpeed > 0 ? Math.ceil(remainingBytes / this.smoothedSpeed) : 0;
+              this.options.onSpeed(this.smoothedSpeed, etaSeconds, this.concurrency);
+            }
           }
         }
       }, 250);

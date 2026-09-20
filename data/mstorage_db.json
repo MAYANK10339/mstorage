@@ -1,6 +1,284 @@
 {
-  "users": [],
-  "files": [],
+  "users": [
+    {
+      "id": "usr_master_mayankxer",
+      "username": "mayankxer",
+      "displayUsername": "@mayankxer",
+      "hashedPin": "$2a$10$gMAv4RiiG84G0cpOVGJj4eZ/HAOSHTglv2mbdPIXNYPnCDtnpq5vu",
+      "role": "admin",
+      "isVip": true,
+      "plan": "master_creator",
+      "createdAt": "2026-09-20T12:21:22.385Z"
+    }
+  ],
+  "files": [
+    {
+      "id": "mst_f868bc01fd",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "direct_test.dat",
+      "storedName": null,
+      "vaultData": {
+        "isVault": true,
+        "isChunked": false,
+        "totalSize": 524288,
+        "mimeType": "application/octet-stream",
+        "originalName": "direct_test.dat",
+        "parts": [
+          {
+            "fileId": "BQACAgUAAyEGAAMBBODpHgADBGqvz-RLRgqK52-dAvVAWSrbWGdTAAKgKwACHIaBVaHsh0E7B9rJPQQ",
+            "messageId": 4,
+            "size": 524288
+          }
+        ]
+      },
+      "size": 524288,
+      "mimeType": "application/octet-stream",
+      "isFolder": false,
+      "isZip": false,
+      "fingerprint": "",
+      "timerSeconds": 0,
+      "downloads": 1,
+      "createdAt": "2026-09-20T12:21:53.908Z",
+      "expiresAt": null
+    },
+    {
+      "id": "mst_d919a8e2a8",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "direct_test.dat",
+      "storedName": null,
+      "vaultData": {
+        "isVault": true,
+        "isChunked": false,
+        "totalSize": 524288,
+        "mimeType": "application/octet-stream",
+        "originalName": "direct_test.dat",
+        "parts": [
+          {
+            "fileId": "BQACAgUAAyEGAAMBBODpHgADBmqv0B5Tg7EJ2_30J4DhXVkX5fsHAAKjKwACHIaBVfbNA5FLNZZGPQQ",
+            "messageId": 6,
+            "size": 524288
+          }
+        ]
+      },
+      "size": 524288,
+      "mimeType": "application/octet-stream",
+      "isFolder": false,
+      "isZip": false,
+      "fingerprint": "",
+      "timerSeconds": 0,
+      "downloads": 1,
+      "createdAt": "2026-09-20T12:22:52.083Z",
+      "expiresAt": null
+    },
+    {
+      "id": "mst_b45e4ee8fe",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "parallel_chunk_test.zip",
+      "storedName": null,
+      "vaultData": {
+        "isVault": true,
+        "isChunked": false,
+        "totalSize": 2098386,
+        "mimeType": "application/zip",
+        "originalName": "parallel_chunk_test.zip",
+        "parts": [
+          {
+            "fileId": "BQACAgUAAyEGAAMBBODpHgADCGqv0CqDesJF-_0wARECC8a3K5LPAAKlKwACHIaBVWIpA4eUq8XYPQQ",
+            "messageId": 8,
+            "size": 2098386
+          }
+        ]
+      },
+      "size": 2098386,
+      "mimeType": "application/zip",
+      "isFolder": false,
+      "isZip": true,
+      "fingerprint": "test_fp_1789906976129",
+      "timerSeconds": 0,
+      "downloads": 1,
+      "createdAt": "2026-09-20T12:23:04.202Z",
+      "expiresAt": null,
+      "xerEngineSpeed": true
+    },
+    {
+      "id": "mst_fld_84c20e7feb",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "MyApp",
+      "isFolder": true,
+      "fileCount": 2,
+      "items": [
+        {
+          "originalName": "index.js",
+          "relativePath": "MyApp/index.js",
+          "storedName": null,
+          "vaultData": {
+            "isVault": true,
+            "isChunked": false,
+            "totalSize": 27,
+            "mimeType": "text/javascript",
+            "originalName": "index.js",
+            "parts": [
+              {
+                "fileId": "BQACAgUAAyEGAAMBBODpHgADCmqv0DhZqrDjhe4U5HXzMsVPsYONAAKnKwACHIaBVV6x2JPcvQzmPQQ",
+                "messageId": 10,
+                "size": 27
+              }
+            ]
+          },
+          "size": 27,
+          "mimeType": "text/javascript"
+        },
+        {
+          "originalName": "style.css",
+          "relativePath": "MyApp/css/style.css",
+          "storedName": null,
+          "vaultData": {
+            "isVault": true,
+            "isChunked": false,
+            "totalSize": 19,
+            "mimeType": "text/css",
+            "originalName": "style.css",
+            "parts": [
+              {
+                "fileId": "BQACAgUAAyEGAAMBBODpHgADC2qv0DkUmuRaxH9m0vEUAUtcuIUZAAKoKwACHIaBVVwU2PI_ONdkPQQ",
+                "messageId": 11,
+                "size": 19
+              }
+            ]
+          },
+          "size": 19,
+          "mimeType": "text/css"
+        }
+      ],
+      "size": 46,
+      "timerSeconds": 0,
+      "downloads": 0,
+      "createdAt": "2026-09-20T12:23:18.479Z",
+      "expiresAt": null
+    },
+    {
+      "id": "mst_c895e7b2cd",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "direct_test.dat",
+      "storedName": null,
+      "vaultData": {
+        "isVault": true,
+        "isChunked": false,
+        "totalSize": 524288,
+        "mimeType": "application/octet-stream",
+        "originalName": "direct_test.dat",
+        "parts": [
+          {
+            "fileId": "BQACAgUAAyEGAAMBBODpHgADDGqv0Fj-HNCKq8RE_7taRl6_DJTqAAKpKwACHIaBVWtd2MuF2thfPQQ",
+            "messageId": 12,
+            "size": 524288
+          }
+        ]
+      },
+      "size": 524288,
+      "mimeType": "application/octet-stream",
+      "isFolder": false,
+      "isZip": false,
+      "fingerprint": "",
+      "timerSeconds": 0,
+      "downloads": 1,
+      "createdAt": "2026-09-20T12:23:49.974Z",
+      "expiresAt": null
+    },
+    {
+      "id": "mst_910f2bd915",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "parallel_chunk_test.zip",
+      "storedName": null,
+      "vaultData": {
+        "isVault": true,
+        "isChunked": false,
+        "totalSize": 2098386,
+        "mimeType": "application/zip",
+        "originalName": "parallel_chunk_test.zip",
+        "parts": [
+          {
+            "fileId": "BQACAgUAAyEGAAMBBODpHgADDmqv0GQS09LOqyimdMFAFsp75kWwAAKrKwACHIaBVX1afyrLLpLYPQQ",
+            "messageId": 14,
+            "size": 2098386
+          }
+        ]
+      },
+      "size": 2098386,
+      "mimeType": "application/zip",
+      "isFolder": false,
+      "isZip": true,
+      "fingerprint": "test_fp_1789907033570",
+      "timerSeconds": 0,
+      "downloads": 1,
+      "createdAt": "2026-09-20T12:24:01.611Z",
+      "expiresAt": null,
+      "xerEngineSpeed": true
+    },
+    {
+      "id": "mst_fld_761e55b682",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "MyApp",
+      "isFolder": true,
+      "fileCount": 2,
+      "items": [
+        {
+          "originalName": "index.js",
+          "relativePath": "MyApp/index.js",
+          "storedName": null,
+          "vaultData": {
+            "isVault": true,
+            "isChunked": false,
+            "totalSize": 27,
+            "mimeType": "text/javascript",
+            "originalName": "index.js",
+            "parts": [
+              {
+                "fileId": "BQACAgUAAyEGAAMBBODpHgADEGqv0HNRvAMNIDANUxuzkoE0EtLuAAKtKwACHIaBVUAR0bmNsT_iPQQ",
+                "messageId": 16,
+                "size": 27
+              }
+            ]
+          },
+          "size": 27,
+          "mimeType": "text/javascript"
+        },
+        {
+          "originalName": "style.css",
+          "relativePath": "MyApp/css/style.css",
+          "storedName": null,
+          "vaultData": {
+            "isVault": true,
+            "isChunked": false,
+            "totalSize": 19,
+            "mimeType": "text/css",
+            "originalName": "style.css",
+            "parts": [
+              {
+                "fileId": "BQACAgUAAyEGAAMBBODpHgADEWqv0HMUclj5LGRTvQn2kg-cS1A9AAKuKwACHIaBVexwJXZR_wABiz0E",
+                "messageId": 17,
+                "size": 19
+              }
+            ]
+          },
+          "size": 19,
+          "mimeType": "text/css"
+        }
+      ],
+      "size": 46,
+      "timerSeconds": 0,
+      "downloads": 0,
+      "createdAt": "2026-09-20T12:24:17.042Z",
+      "expiresAt": null
+    }
+  ],
   "meta": {
     "app": "Mstorage",
     "developer": "Mayank Mandrai",

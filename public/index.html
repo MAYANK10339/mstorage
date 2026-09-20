@@ -397,6 +397,31 @@
               <h2 class="dropzone-title">Drag &amp; Drop Files or Select Below</h2>
               <p class="dropzone-hint">Upload single files, zip archives, or entire directories with one click.</p>
               
+              <!-- Prominent Mode Switcher: Parallel Chunks vs Full Upload -->
+              <div class="mode-switch-card">
+                <div class="mode-switch-title">
+                  <span class="live-dot"></span>
+                  <span>Choose Upload Method:</span>
+                </div>
+                <div class="mode-switch-buttons">
+                  <button type="button" class="btn-mode-choice active" id="btn-mode-turbo" data-mode="turbo">
+                    <span class="mode-choice-icon">⚡</span>
+                    <div class="mode-choice-text">
+                      <strong>Parallel Upload (Chunks me)</strong>
+                      <span>High-speed parallel streams &bull; Best for large files</span>
+                    </div>
+                  </button>
+
+                  <button type="button" class="btn-mode-choice" id="btn-mode-direct" data-mode="direct">
+                    <span class="mode-choice-icon">🛡️</span>
+                    <div class="mode-choice-text">
+                      <strong>Full Upload (Ek hi file me)</strong>
+                      <span>Continuous direct stream &bull; 100% steady speed</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <!-- 3 Dedicated Upload Buttons -->
               <div class="upload-buttons-group">
                 <!-- 1. Files Upload -->
@@ -733,8 +758,8 @@
                   <span class="dev-stat-label">Always Online</span>
                 </div>
                 <div class="dev-stat">
-                  <span class="dev-stat-value">&inr; UPI</span>
-                  <span class="dev-stat-label">VIP Enabled</span>
+                  <span class="dev-stat-value">100%</span>
+                  <span class="dev-stat-label">Free Forever</span>
                 </div>
               </div>
             </div>
