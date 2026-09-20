@@ -940,11 +940,11 @@
     el.uploadProgressPanel.classList.remove('hidden');
     if (el.xerMatrixWrap) el.xerMatrixWrap.classList.add('hidden');
     if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
-    el.progressFileName.textContent = `Uploading folder: ${detectedFolderName} (${fileList.length} items)`;
+    el.progressFileName.textContent = `Packaging folder: ${detectedFolderName}.zip (${fileList.length} items)`;
     el.progressBarFill.style.width = '0%';
     el.progressPercentageText.textContent = '0%';
-    el.progressStatusSpeed.textContent = 'Streaming multi-file folder archive...';
-    if (el.xerEngineThreads) el.xerEngineThreads.textContent = `Folder Bundle (${fileList.length} items)`;
+    el.progressStatusSpeed.textContent = 'Uploading and packaging into .zip archive...';
+    if (el.xerEngineThreads) el.xerEngineThreads.textContent = `Auto-Zip (${fileList.length} items)`;
 
     const speedMeter = createSpeedMeter(1.5);
     const startTime = Date.now();
@@ -981,7 +981,7 @@
         if (xhr.status === 200 || xhr.status === 201) {
           try {
             const data = JSON.parse(xhr.responseText);
-            showToast(`Folder "${detectedFolderName}" uploaded successfully!`, 'success');
+            showToast(`Folder "${detectedFolderName}" packaged into .zip and uploaded successfully!`, 'success');
             setTimeout(() => {
               el.uploadProgressPanel.classList.add('hidden');
             }, 800);

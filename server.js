@@ -11,6 +11,14 @@ const mime = require('mime-types');
 const archiver = require('archiver');
 const telegramVault = require('./telegramVault');
 
+// Universal zip archiver constructor (works with Archiver v8 ZipArchive class or v7 function)
+function createZipArchive(options = {}) {
+  if (archiver.ZipArchive) return new archiver.ZipArchive(options);
+  if (typeof archiver === 'function') return archiver('zip', options);
+  if (archiver.create) return archiver.create('zip', options);
+  throw new Error('Archiver module structure not supported');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'mstorage-secure-key-mayank-mandrai-2026';
@@ -478,51 +486,90 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), async (r
     const db = readDB();
     const uploadedRecords = [];
 
-    // If uploading a folder bundle (even 1 file or multiple files inside a directory)
+    // If uploading a folder bundle -> automatically package into a standard .zip archive!
     if (uploadType === 'folder') {
-      const bundleId = 'mst_fld_' + crypto.randomBytes(5).toString('hex');
-      const totalSize = req.files.reduce((sum, f) => sum + f.size, 0);
-      
-      const fileEntries = [];
-      for (let i = 0; i < req.files.length; i++) {
-        const f = req.files[i];
-        let vaultData = null;
-        let storedName = f.filename;
-        const relPath = relativePaths[i] || f.originalname;
+      const rawName = String(folderName || 'Folder').trim();
+      const cleanFolderName = rawName.replace(/[/\\?%*:|"<>]/g, '_');
+      const zipFileName = cleanFolderName.toLowerCase().endsWith('.zip') ? cleanFolderName : `${cleanFolderName}.zip`;
+      const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(6).toString('hex');
+      const storedZipName = 'mst-' + uniqueSuffix + '.zip';
+      const zipPath = path.join(STORAGE_DIR, storedZipName);
 
-        if (telegramVault.isConfigured()) {
+      // Package all files into clean .zip archive maintaining directory structure
+      await new Promise((resolveZip, rejectZip) => {
+        const output = fs.createWriteStream(zipPath);
+        const archive = createZipArchive({
+          zlib: { level: 6 }
+        });
+
+        output.on('close', resolveZip);
+        archive.on('error', rejectZip);
+        archive.pipe(output);
+
+        for (let i = 0; i < req.files.length; i++) {
+          const f = req.files[i];
           const localPath = path.join(STORAGE_DIR, f.filename);
-          vaultData = await telegramVault.uploadFileToVault(localPath, f.originalname, f.mimetype, true);
-          storedName = null;
+          let relPath = relativePaths[i] || f.originalname;
+          relPath = relPath.replace(/^[/\\]+/, '');
+          if (fs.existsSync(localPath)) {
+            archive.file(localPath, { name: relPath });
+          }
         }
 
-        fileEntries.push({
-          originalName: f.originalname,
-          relativePath: relPath,
-          storedName: storedName,
-          vaultData: vaultData,
-          size: f.size,
-          mimeType: f.mimetype || mime.lookup(f.originalname) || 'application/octet-stream'
-        });
+        archive.finalize();
+      });
+
+      // Remove temporary received individual files from disk immediately
+      for (const f of req.files) {
+        try {
+          const p = path.join(STORAGE_DIR, f.filename);
+          if (fs.existsSync(p)) fs.unlinkSync(p);
+        } catch (e) {}
       }
 
-      const folderRecord = {
-        id: bundleId,
+      // Exact zip file size!
+      const zipStat = fs.statSync(zipPath);
+      const fileId = 'mst_' + crypto.randomBytes(5).toString('hex');
+
+      const record = {
+        id: fileId,
         userId: req.user.id,
         uploaderUsername: req.user.displayUsername,
-        name: folderName,
-        isFolder: true,
-        fileCount: req.files.length,
-        items: fileEntries,
-        size: totalSize,
+        name: zipFileName,
+        storedName: storedZipName,
+        vaultData: null,
+        size: zipStat.size,
+        mimeType: 'application/zip',
+        isFolder: false,
+        isZip: true,
         timerSeconds: timerSeconds,
         downloads: 0,
         createdAt: new Date().toISOString(),
         expiresAt: retentionDays > 0 ? new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString() : null
       };
 
-      db.files.push(folderRecord);
-      uploadedRecords.push(folderRecord);
+      db.files.push(record);
+      uploadedRecords.push(record);
+
+      // Queue background cloud vaulting for the packaged zip
+      if (telegramVault.isConfigured()) {
+        setImmediate(async () => {
+          try {
+            const vData = await telegramVault.uploadFileToVault(zipPath, zipFileName, 'application/zip', true);
+            if (vData) {
+              const curDb = readDB();
+              const item = curDb.files.find(x => x.id === fileId);
+              if (item) {
+                item.vaultData = vData;
+                item.storedName = null;
+                writeDB(curDb);
+              }
+            }
+          } catch (err) {
+            console.error('[XerVault] Background folder zip vault notice:', err.message);
+          }
+        });
+      }
     } else {
       // Regular files or zip
       for (const f of req.files) {
@@ -530,13 +577,8 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), async (r
         const ext = path.extname(f.originalname).toLowerCase();
         const isZip = ext === '.zip' || f.mimetype === 'application/zip' || uploadType === 'zip';
 
-        let vaultData = null;
         let storedName = f.filename;
-        if (telegramVault.isConfigured()) {
-          const localPath = path.join(STORAGE_DIR, f.filename);
-          vaultData = await telegramVault.uploadFileToVault(localPath, f.originalname, f.mimetype, true);
-          storedName = null;
-        }
+        const localPath = path.join(STORAGE_DIR, f.filename);
 
         const record = {
           id: fileId,
@@ -544,7 +586,7 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), async (r
           uploaderUsername: req.user.displayUsername,
           name: f.originalname,
           storedName: storedName,
-          vaultData: vaultData,
+          vaultData: null,
           size: f.size,
           mimeType: f.mimetype || mime.lookup(f.originalname) || 'application/octet-stream',
           isFolder: false,
@@ -558,6 +600,25 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), async (r
 
         db.files.push(record);
         uploadedRecords.push(record);
+
+        if (telegramVault.isConfigured()) {
+          setImmediate(async () => {
+            try {
+              const vData = await telegramVault.uploadFileToVault(localPath, f.originalname, record.mimeType, true);
+              if (vData) {
+                const curDb = readDB();
+                const item = curDb.files.find(x => x.id === fileId);
+                if (item) {
+                  item.vaultData = vData;
+                  item.storedName = null;
+                  writeDB(curDb);
+                }
+              }
+            } catch (err) {
+              console.error('[XerVault] Background file vault notice:', err.message);
+            }
+          });
+        }
       }
     }
 
@@ -988,7 +1049,7 @@ app.get('/api/files/download/:id', async (req, res) => {
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(zipFileName)}"`);
 
-      const archive = archiver('zip', {
+      const archive = createZipArchive({
         zlib: { level: 6 }
       });
 
