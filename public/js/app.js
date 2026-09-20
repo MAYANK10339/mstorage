@@ -1302,6 +1302,27 @@
     if (!urlParams.get('d') && state.token) {
       loadUserFiles();
     }
+
+    fetchSystemStats();
+  }
+
+  async function fetchSystemStats() {
+    try {
+      const res = await fetch('/api/system/stats');
+      if (res.ok) {
+        const data = await res.json();
+        const drawerStatusEl = document.getElementById('drawer-storage-status');
+        if (drawerStatusEl) {
+          if (data.vaultActive) {
+            drawerStatusEl.textContent = 'XerVault Unlimited Cloud Active • 0 Delay';
+          } else {
+            drawerStatusEl.textContent = 'Cloud Storage 24/7 Active • 0 Delay';
+          }
+        }
+      }
+    } catch (e) {
+      // Non-blocking
+    }
   }
 
   if (document.readyState === 'loading') {

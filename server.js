@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -8,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mime = require('mime-types');
 const archiver = require('archiver');
+const telegramVault = require('./telegramVault');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -109,6 +111,19 @@ function loadInitialDB() {
 // Initialize DB into memory on server boot
 loadInitialDB();
 
+// Cold-boot Cloud Recovery: If DB is empty and Telegram Vault is active, recover latest snapshot
+if (telegramVault.isConfigured() && memoryDB && memoryDB.users.length === 0 && memoryDB.files.length === 0) {
+  telegramVault.restoreLatestDatabase(DB_FILE).then(restored => {
+    if (restored) {
+      try {
+        const content = fs.readFileSync(DB_FILE, 'utf8');
+        memoryDB = JSON.parse(content);
+        console.log('[XerVault] Cloud DB successfully hydrated into memory on cold boot!');
+      } catch (e) {}
+    }
+  });
+}
+
 function readDB() {
   if (!memoryDB) {
     loadInitialDB();
@@ -139,6 +154,11 @@ function writeDB(data) {
       fs.writeFileSync(tempBak, jsonString, 'utf8');
       fs.renameSync(tempBak, DB_BAK_FILE);
     } catch (bakErr) {}
+
+    // Auto-backup to XerVault Telegram Cloud (solves Render ephemeral reset)
+    if (telegramVault.isConfigured()) {
+      telegramVault.scheduleDatabaseBackup(DB_FILE);
+    }
 
     return true;
   } catch (err) {
@@ -357,7 +377,7 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 // -------------------------------------------------------------
 
 // Upload files / folder / zip
-app.post('/api/files/upload', authenticateToken, upload.array('files'), (req, res) => {
+app.post('/api/files/upload', authenticateToken, upload.array('files'), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files provided for upload' });
@@ -376,12 +396,23 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), (req, re
       const bundleId = 'mst_fld_' + crypto.randomBytes(5).toString('hex');
       const totalSize = req.files.reduce((sum, f) => sum + f.size, 0);
       
-      const fileEntries = req.files.map(f => ({
-        originalName: f.originalname,
-        storedName: f.filename,
-        size: f.size,
-        mimeType: f.mimetype || mime.lookup(f.originalname) || 'application/octet-stream'
-      }));
+      const fileEntries = [];
+      for (const f of req.files) {
+        let vaultData = null;
+        let storedName = f.filename;
+        if (telegramVault.isConfigured()) {
+          const localPath = path.join(STORAGE_DIR, f.filename);
+          vaultData = await telegramVault.uploadFileToVault(localPath, f.originalname, f.mimetype, true);
+          storedName = null;
+        }
+        fileEntries.push({
+          originalName: f.originalname,
+          storedName: storedName,
+          vaultData: vaultData,
+          size: f.size,
+          mimeType: f.mimetype || mime.lookup(f.originalname) || 'application/octet-stream'
+        });
+      }
 
       const folderRecord = {
         id: bundleId,
@@ -407,12 +438,21 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), (req, re
         const ext = path.extname(f.originalname).toLowerCase();
         const isZip = ext === '.zip' || f.mimetype === 'application/zip' || uploadType === 'zip';
 
+        let vaultData = null;
+        let storedName = f.filename;
+        if (telegramVault.isConfigured()) {
+          const localPath = path.join(STORAGE_DIR, f.filename);
+          vaultData = await telegramVault.uploadFileToVault(localPath, f.originalname, f.mimetype, true);
+          storedName = null;
+        }
+
         const record = {
           id: fileId,
           userId: req.user.id,
           uploaderUsername: req.user.displayUsername,
           name: f.originalname,
-          storedName: f.filename,
+          storedName: storedName,
+          vaultData: vaultData,
           size: f.size,
           mimeType: f.mimetype || mime.lookup(f.originalname) || 'application/octet-stream',
           isFolder: false,
@@ -684,13 +724,22 @@ app.post('/api/xerengine/finalize', authenticateToken, async (req, res) => {
       console.warn('Could not remove sessionDir immediately:', rmErr);
     }
 
+    // Vault processing: stream to Telegram Cloud & wipe local copy
+    let vaultData = null;
+    let finalStoredName = storedName;
+    if (telegramVault.isConfigured()) {
+      vaultData = await telegramVault.uploadFileToVault(finalPath, meta.fileName, mime.lookup(meta.fileName) || 'application/octet-stream', true);
+      finalStoredName = null;
+    }
+
     const db = readDB();
     const record = {
       id: fileId,
       userId: req.user.id,
       uploaderUsername: req.user.displayUsername,
       name: meta.fileName,
-      storedName: storedName,
+      storedName: finalStoredName,
+      vaultData: vaultData,
       size: stat.size,
       mimeType: mime.lookup(meta.fileName) || 'application/octet-stream',
       isFolder: false,
@@ -784,7 +833,7 @@ app.get('/api/files/public/:id', (req, res) => {
 });
 
 // Direct Download Stream
-app.get('/api/files/download/:id', (req, res) => {
+app.get('/api/files/download/:id', async (req, res) => {
   const { id } = req.params;
   const db = readDB();
   const file = db.files.find(f => f.id === id);
@@ -812,9 +861,14 @@ app.get('/api/files/download/:id', (req, res) => {
       const idx = parseInt(req.query.item, 10);
       if (!isNaN(idx) && file.items[idx]) {
         const targetItem = file.items[idx];
-        const targetPath = path.join(STORAGE_DIR, targetItem.storedName);
-        if (fs.existsSync(targetPath)) {
-          return res.download(targetPath, targetItem.originalName);
+        if (targetItem.vaultData) {
+          return await telegramVault.streamToResponse(targetItem.vaultData, targetItem.originalName, res);
+        }
+        if (targetItem.storedName) {
+          const targetPath = path.join(STORAGE_DIR, targetItem.storedName);
+          if (fs.existsSync(targetPath)) {
+            return res.download(targetPath, targetItem.originalName);
+          }
         }
       }
       return res.status(404).send('Requested file from folder not found on server');
@@ -840,9 +894,24 @@ app.get('/api/files/download/:id', (req, res) => {
       archive.pipe(res);
 
       for (const item of file.items) {
-        const itemPath = path.join(STORAGE_DIR, item.storedName);
-        if (fs.existsSync(itemPath)) {
-          archive.file(itemPath, { name: item.originalName });
+        if (item.vaultData && item.vaultData.parts && item.vaultData.parts[0]) {
+          try {
+            const fileId = item.vaultData.parts[0].fileId;
+            const directUrl = await telegramVault.getFileDirectUrl(fileId);
+            const fetchRes = await fetch(directUrl);
+            if (fetchRes.ok) {
+              const { Readable } = require('stream');
+              const nodeStream = Readable.fromWeb(fetchRes.body);
+              archive.append(nodeStream, { name: item.originalName });
+            }
+          } catch (e) {
+            console.warn('Zip stream append item error:', e.message);
+          }
+        } else if (item.storedName) {
+          const itemPath = path.join(STORAGE_DIR, item.storedName);
+          if (fs.existsSync(itemPath)) {
+            archive.file(itemPath, { name: item.originalName });
+          }
         }
       }
 
@@ -854,12 +923,22 @@ app.get('/api/files/download/:id', (req, res) => {
     }
   }
 
-  const filePath = path.join(STORAGE_DIR, file.storedName);
-  if (!fs.existsSync(filePath)) {
+  // Vault Streaming Download (Zero-storage on Render)
+  if (file.vaultData) {
+    try {
+      return await telegramVault.streamToResponse(file.vaultData, file.name, res);
+    } catch (vaultErr) {
+      console.error('Vault stream error:', vaultErr);
+      return res.status(500).send('Error streaming file from Cloud Vault: ' + vaultErr.message);
+    }
+  }
+
+  const filePath = file.storedName ? path.join(STORAGE_DIR, file.storedName) : null;
+  if (!filePath || !fs.existsSync(filePath)) {
     return res.status(404).send('Physical file missing from storage');
   }
 
-  // Ultra-fast streaming download with exact Content-Length and Range support (Prevents browser 'resuming' delay)
+  // Ultra-fast local streaming download fallback with exact Content-Length and Range support
   try {
     const stat = fs.statSync(filePath);
     res.setHeader('Content-Length', stat.size);
@@ -912,7 +991,7 @@ app.put('/api/files/:id', authenticateToken, (req, res) => {
 });
 
 // Replace / re-upload file content keeping same share link
-app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), (req, res) => {
+app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const { id } = req.params;
     if (!req.file) {
@@ -938,7 +1017,10 @@ app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), (re
       return res.status(403).json({ error: 'Permission denied: This file belongs to ' + (file.uploaderUsername || 'another user') });
     }
 
-    // Safely remove previous physical file
+    // Safely remove previous physical / vault file
+    if (file.vaultData) {
+      telegramVault.deleteFromVault(file.vaultData);
+    }
     if (file.storedName) {
       const oldPath = path.join(STORAGE_DIR, file.storedName);
       if (fs.existsSync(oldPath)) {
@@ -946,8 +1028,18 @@ app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), (re
       }
     }
 
+    // Vault processing or local storage
+    let vaultData = null;
+    let storedName = req.file.filename;
+    if (telegramVault.isConfigured()) {
+      const localP = path.join(STORAGE_DIR, req.file.filename);
+      vaultData = await telegramVault.uploadFileToVault(localP, req.file.originalname, req.file.mimetype, true);
+      storedName = null;
+    }
+
     // Update with new file data
-    file.storedName = req.file.filename;
+    file.storedName = storedName;
+    file.vaultData = vaultData;
     file.size = req.file.size;
     file.mimeType = req.file.mimetype || mime.lookup(req.file.originalname) || 'application/octet-stream';
     if (req.body.updateName === 'true' || !file.name) {
@@ -982,12 +1074,18 @@ app.delete('/api/files/:id', authenticateToken, (req, res) => {
   if (index !== -1) {
     const [removedFile] = db.files.splice(index, 1);
 
-    // Clean up physical file(s) from storage
+    // Clean up physical file(s) and vault files
     try {
+      if (removedFile.vaultData) {
+        telegramVault.deleteFromVault(removedFile.vaultData);
+      }
       if (removedFile.isFolder && removedFile.items) {
         removedFile.items.forEach(item => {
-          const p = path.join(STORAGE_DIR, item.storedName);
-          if (fs.existsSync(p)) fs.unlinkSync(p);
+          if (item.vaultData) telegramVault.deleteFromVault(item.vaultData);
+          if (item.storedName) {
+            const p = path.join(STORAGE_DIR, item.storedName);
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+          }
         });
       } else if (removedFile.storedName) {
         const p = path.join(STORAGE_DIR, removedFile.storedName);
@@ -1014,6 +1112,8 @@ app.get('/api/system/stats', (req, res) => {
     platform: 'Mstorage',
     developer: 'Mayank Mandrai',
     creatorRole: 'Lead Architect & Developer',
+    storageEngine: telegramVault.isConfigured() ? 'XerVault Unlimited Cloud Vault' : 'Local Storage Engine',
+    vaultActive: telegramVault.isConfigured(),
     stats: {
       totalFiles,
       totalDownloads,
@@ -1090,6 +1190,7 @@ app.listen(PORT, () => {
   console.log(`  Mstorage Server Active`);
   console.log(`  Developer & Creator: Mayank Mandrai`);
   console.log(`  Port: ${PORT}`);
+  console.log(`  Storage Engine: ${telegramVault.isConfigured() ? 'XerVault Unlimited Cloud (0 MB on Render)' : 'Local Disk Storage'}`);
   console.log(`  Ready for 24/7 Deployment on Render`);
   console.log(`=========================================`);
 });

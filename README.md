@@ -99,6 +99,22 @@ Render ka free web service 15 minute inactivity ke baad sleep mode me chala jata
 
 ---
 
+### Step 4: XerVault Unlimited Cloud Storage Engine Activate Karein (Render Pe 0 MB Store Hoga)
+
+Mstorage me built-in **XerVault Engine** hai jo Render ki temporary disk ko bilkul use nahi karta aur aapko **Unlimited Free Cloud Storage** deta hai:
+
+1. Telegram par [@BotFather](https://t.me/BotFather) ko message karein aur `/newbot` likh kar apna Bot Token lein.
+2. Ek naya Private Channel banayein, usme apne bot ko **Administrator** bana dein, aur Channel Chat ID (e.g. `-100xxxxxxxxxx`) note karein.
+3. Render.com Dashboard me apni service me jayein -> **Environment** tab me 2 variables add karein:
+   - `TELEGRAM_BOT_TOKEN` = `aapka_bot_token`
+   - `TELEGRAM_CHAT_ID` = `aapka_channel_id`
+4. **Fayde:** 
+   - Files upload hote hi seedha cloud vault me chali jaati hain aur Render ke disk se instantly delete ho jaati hain (**Render Disk = 0 MB**).
+   - Render restart hone par bhi **0 files delete hongi**!
+   - Database auto-backup and cold-boot recovery hamesha active rahega.
+
+---
+
 ## Technology Stack
 
 - **Frontend:** HTML5, Vanilla CSS3 (Obsidian Cyber Glassmorphism), Modern Vanilla JavaScript.

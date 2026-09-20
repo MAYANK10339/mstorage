@@ -10,3 +10,7 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      - key: TELEGRAM_BOT_TOKEN
+        value: 8723753907:AAHE9erzT_TFbnlLDOg1ZJ-Ww3rJdk3Dlvo
+      - key: TELEGRAM_CHAT_ID
+        value: "-1004376815902"
