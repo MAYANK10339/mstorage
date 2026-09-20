@@ -1105,7 +1105,224 @@ button, input, select {
 
 .comp-item.positive svg { color: var(--success); }
 .comp-item.negative svg { color: var(--danger); }
-.comp-item.neutral svg { color: var(--text-subtle); }
+/* ==========================================================================
+   Subscription & VIP Plans Section
+   ========================================================================== */
+.plans-section {
+  margin-bottom: 70px;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 36px;
+}
+
+.plan-card {
+  background: rgba(16, 23, 40, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  backdrop-filter: blur(12px);
+}
+
+.plan-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+}
+
+.plan-card-vip {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(16, 23, 40, 0.95) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.12);
+}
+
+.plan-card-vip:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 0 45px rgba(245, 158, 11, 0.25);
+}
+
+.plan-badge-popular {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 14px;
+  border-radius: var(--radius-full);
+  letter-spacing: 1px;
+}
+
+.plan-header {
+  margin-bottom: 24px;
+}
+
+.plan-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.plan-tag-free {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.plan-tag-vip {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.plan-tag-creator {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.plan-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.plan-price .currency {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.plan-price .amount {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.plan-card-vip .plan-price .amount {
+  color: #fbbf24;
+}
+
+.plan-price .period {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.plan-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.plan-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+  flex-grow: 1;
+}
+
+.plan-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.plan-feature.positive svg { color: #34d399; flex-shrink: 0; }
+.plan-feature.neutral svg { color: var(--text-subtle); flex-shrink: 0; }
+
+.btn-vip-upgrade {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-weight: 800;
+  border: none;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.btn-vip-upgrade:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.45);
+}
+
+.creator-status-box {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  font-size: 0.82rem;
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.vip-sponsor-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.vip-sponsor-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vip-sponsor-info h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.vip-sponsor-info p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.vip-mini-link {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fbbf24;
+  text-decoration: underline;
+}
 
 /* About Section & Developer Spotlight */
 .about-section {

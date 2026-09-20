@@ -1061,8 +1061,11 @@
         el.dlFolderContents.classList.add('hidden');
       }
 
-      // Countdown Timer Logic
-      const timerSeconds = parseInt(file.timerSeconds, 10) || 0;
+      // Countdown Timer Logic (VIP & Creator Master bypasses all timers automatically)
+      const currentUsername = (state.user && state.user.username) ? String(state.user.username).toLowerCase() : '';
+      const isCreatorOrVip = currentUsername === 'mayank' || currentUsername === 'mayank_mandrai_official' || (state.user && state.user.isVip);
+
+      const timerSeconds = isCreatorOrVip ? 0 : (parseInt(file.timerSeconds, 10) || 0);
       if (timerSeconds > 0) {
         runDownloadTimer(timerSeconds, file.id);
       } else {
@@ -1304,6 +1307,41 @@
     }
 
     fetchSystemStats();
+    setupVipModal();
+  }
+
+  function setupVipModal() {
+    const btnOpenVip = document.getElementById('btn-open-vip-modal');
+    const upiModal = document.getElementById('upi-vip-modal');
+    const btnCloseUpi = document.getElementById('btn-close-upi-modal');
+    const btnCopyUpi = document.getElementById('btn-copy-upi');
+    const upiText = document.getElementById('upi-vpa-text');
+
+    if (btnOpenVip && upiModal) {
+      btnOpenVip.addEventListener('click', () => {
+        upiModal.classList.remove('hidden');
+      });
+    }
+
+    if (btnCloseUpi && upiModal) {
+      btnCloseUpi.addEventListener('click', () => {
+        upiModal.classList.add('hidden');
+      });
+      upiModal.addEventListener('click', (e) => {
+        if (e.target === upiModal) upiModal.classList.add('hidden');
+      });
+    }
+
+    if (btnCopyUpi && upiText) {
+      btnCopyUpi.addEventListener('click', () => {
+        navigator.clipboard.writeText(upiText.textContent.trim());
+        btnCopyUpi.textContent = 'Copied!';
+        showToast('UPI ID copied to clipboard!', 'info');
+        setTimeout(() => {
+          btnCopyUpi.textContent = 'Copy UPI';
+        }, 2000);
+      });
+    }
   }
 
   async function fetchSystemStats() {
