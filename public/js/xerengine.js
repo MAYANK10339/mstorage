@@ -60,19 +60,23 @@
   }
 
   // Determine dynamic chunk size and concurrency based on file volume
+  // Optimized to prevent TCP congestion and socket bufferbloat on residential/mobile uplinks
   function getEngineConfig(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) {
-      // < 10 MB
-      return { chunkSize: 2 * 1024 * 1024, concurrency: 4 };
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const isSlowConn = conn && (conn.saveData || conn.effectiveType === '3g' || conn.effectiveType === '2g');
+
+    if (fileSize < 20 * 1024 * 1024) {
+      // < 20 MB: small slices, snappy finish
+      return { chunkSize: 2 * 1024 * 1024, concurrency: isSlowConn ? 2 : 3 };
     } else if (fileSize < 100 * 1024 * 1024) {
-      // 10 MB - 100 MB
-      return { chunkSize: 4 * 1024 * 1024, concurrency: 6 };
+      // 20 MB - 100 MB
+      return { chunkSize: 4 * 1024 * 1024, concurrency: isSlowConn ? 2 : 3 };
     } else if (fileSize < 1024 * 1024 * 1024) {
-      // 100 MB - 1 GB
-      return { chunkSize: 8 * 1024 * 1024, concurrency: 6 };
+      // 100 MB - 1 GB: 5MB chunks, 3-4 parallel streams (prevents network choke)
+      return { chunkSize: 5 * 1024 * 1024, concurrency: isSlowConn ? 2 : 4 };
     } else {
-      // 1 GB - 100 GB+
-      return { chunkSize: 16 * 1024 * 1024, concurrency: 8 };
+      // 1 GB - 100 GB+: 8MB optimal chunks with 3-4 workers (prevents TCP bufferbloat & packet drops on Render)
+      return { chunkSize: 8 * 1024 * 1024, concurrency: isSlowConn ? 2 : 4 };
     }
   }
 
@@ -353,6 +357,14 @@
         xhr.addEventListener('abort', () => {
           this.activeControllers.delete(chunkIndex);
           reject(new Error('Chunk upload aborted'));
+        });
+
+        xhr.timeout = 90000; // 90s timeout per chunk prevents socket stalls
+        xhr.addEventListener('timeout', () => {
+          this.activeControllers.delete(chunkIndex);
+          this.bytesLoaded = Math.max(0, this.bytesLoaded - previousLoaded);
+          this.updateProgress();
+          reject(new Error('Chunk upload timed out - auto retrying'));
         });
 
         const url = `/api/xerengine/chunk?uploadId=${encodeURIComponent(this.uploadId)}&chunkIndex=${chunkIndex}&totalChunks=${this.totalChunks}`;
