@@ -11,6 +11,14 @@ const mime = require('mime-types');
 const archiver = require('archiver');
 const telegramVault = require('./telegramVault');
 
+// Top-level crash guards against unhandled socket disconnects & stream aborts
+process.on('uncaughtException', (err) => {
+  console.warn('[Process Guard] Handled uncaughtException:', err && err.message ? err.message : err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Process Guard] Handled unhandledRejection:', reason && reason.message ? reason.message : reason);
+});
+
 // Universal zip archiver constructor (works with Archiver v8 ZipArchive class or v7 function)
 function createZipArchive(options = {}) {
   if (archiver.ZipArchive) return new archiver.ZipArchive(options);
@@ -1058,6 +1066,10 @@ app.get('/api/files/download/:id', async (req, res) => {
         if (!res.headersSent) res.status(500).send('Error packaging folder archive');
       });
 
+      res.on('close', () => {
+        try { archive.destroy(); } catch (e) {}
+      });
+
       archive.pipe(res);
 
       for (const item of file.items) {
@@ -1114,13 +1126,17 @@ app.get('/api/files/download/:id', async (req, res) => {
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.download(filePath, file.name, (err) => {
-      if (err && !res.headersSent) {
-        console.error('Download stream error:', err);
+      if (err) {
+        if (!res.headersSent) {
+          console.warn('Download send notice:', err.message);
+        }
       }
     });
   } catch (err) {
     console.error('File stat error:', err);
-    return res.download(filePath, file.name);
+    if (!res.headersSent) {
+      return res.download(filePath, file.name, () => {});
+    }
   }
 });
 

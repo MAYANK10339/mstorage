@@ -14,6 +14,8 @@
     currentTimer: 0,
     currentRetention: 0,
     uploadMode: 'direct', // 'direct' (default reliable stream) | 'turbo' (parallel chunks beta)
+    theme: localStorage.getItem('mst_theme') || 'default',
+    liquidGlass: localStorage.getItem('mst_liquid_glass') === 'on',
     files: [],
     activeDownloadFile: null,
     pendingDeleteId: null,
@@ -1596,6 +1598,9 @@
       renderFiles();
     });
 
+    // Initialize Themes & Liquid Glass Engine
+    initThemeAndGlass();
+
     // Check route (public download vs dashboard)
     checkPublicDownloadRoute();
 
@@ -1687,6 +1692,96 @@
     }
 
     fetchSystemStats();
+  }
+
+  // -------------------------------------------------------------
+  // DYNAMIC THEMES & LIQUID GLASS ENGINE
+  // Developer & Creator: Mayank Mandrai
+  // -------------------------------------------------------------
+  function applyTheme(themeName) {
+    if (!themeName || !['default', 'ice-blue', 'aurora'].includes(themeName)) {
+      themeName = 'default';
+    }
+    state.theme = themeName;
+    localStorage.setItem('mst_theme', themeName);
+
+    if (themeName === 'default') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', themeName);
+    }
+
+    // Update active pill state across desktop header & mobile drawer
+    document.querySelectorAll('[data-theme-set]').forEach(btn => {
+      if (btn.getAttribute('data-theme-set') === themeName) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  function setLiquidGlass(enable) {
+    state.liquidGlass = Boolean(enable);
+    localStorage.setItem('mst_liquid_glass', state.liquidGlass ? 'on' : 'off');
+
+    const toggleBtn = document.getElementById('btn-toggle-glass');
+    const toggleLabel = document.getElementById('glass-toggle-label');
+    const drawerToggleBtn = document.getElementById('btn-drawer-toggle-glass');
+    const drawerToggleLabel = document.getElementById('drawer-glass-toggle-label');
+
+    if (state.liquidGlass) {
+      document.body.classList.add('liquid-glass-active');
+      if (toggleBtn) toggleBtn.classList.add('glass-on');
+      if (toggleLabel) toggleLabel.textContent = 'Liquid Glass: ON';
+      if (drawerToggleBtn) drawerToggleBtn.classList.add('glass-on');
+      if (drawerToggleLabel) drawerToggleLabel.textContent = 'ON';
+    } else {
+      document.body.classList.remove('liquid-glass-active');
+      if (toggleBtn) toggleBtn.classList.remove('glass-on');
+      if (toggleLabel) toggleLabel.textContent = 'Liquid Glass: OFF';
+      if (drawerToggleBtn) drawerToggleBtn.classList.remove('glass-on');
+      if (drawerToggleLabel) drawerToggleLabel.textContent = 'OFF';
+    }
+  }
+
+  function initThemeAndGlass() {
+    // Read saved preferences
+    const savedTheme = localStorage.getItem('mst_theme') || 'default';
+    const savedGlass = localStorage.getItem('mst_liquid_glass') === 'on';
+
+    applyTheme(savedTheme);
+    setLiquidGlass(savedGlass);
+
+    // Wire up theme buttons (desktop + drawer)
+    document.querySelectorAll('[data-theme-set]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const t = btn.getAttribute('data-theme-set');
+        applyTheme(t);
+        const nameMap = { 'default': 'Midnight Cyber', 'ice-blue': 'Ocean Ice Blue', 'aurora': 'Aurora Hyper-Gradient' };
+        showToast(`Theme switched to ${nameMap[t] || t}`, 'info');
+      });
+    });
+
+    // Wire up Liquid Glass buttons (desktop + drawer)
+    const toggleBtn = document.getElementById('btn-toggle-glass');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        setLiquidGlass(!state.liquidGlass);
+        showToast(`Liquid Glass ${state.liquidGlass ? 'Activated' : 'Deactivated'}`, 'info');
+      });
+    }
+
+    const drawerToggleBtn = document.getElementById('btn-drawer-toggle-glass');
+    if (drawerToggleBtn) {
+      drawerToggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        setLiquidGlass(!state.liquidGlass);
+        showToast(`Liquid Glass ${state.liquidGlass ? 'Activated' : 'Deactivated'}`, 'info');
+      });
+    }
   }
 
   async function fetchSystemStats() {

@@ -216,12 +216,23 @@ class TelegramVault {
       }
 
       const nodeStream = Readable.fromWeb(fetchRes.body);
+      const cleanup = () => {
+        try { nodeStream.destroy(); } catch (e) {}
+      };
+      res.on('close', cleanup);
+      nodeStream.on('error', (err) => {
+        console.warn('[XerVault] Single stream read notice:', err.message);
+        cleanup();
+      });
       nodeStream.pipe(res);
       return;
     }
 
     // Multi-Part Chunk Stream (Sequentially stream each part into `res`)
     for (let i = 0; i < vaultData.parts.length; i++) {
+      if (res.writableEnded || res.closed || res.destroyed) {
+        break;
+      }
       const part = vaultData.parts[i];
       const downloadUrl = await this.getFileDirectUrl(part.fileId);
       const fetchRes = await fetch(downloadUrl);
@@ -230,11 +241,27 @@ class TelegramVault {
       }
 
       const isLast = i === vaultData.parts.length - 1;
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         const nodeStream = Readable.fromWeb(fetchRes.body);
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          try { nodeStream.destroy(); } catch (e) {}
+          res.removeListener('close', finish);
+          resolve();
+        };
+
+        res.on('close', finish);
+        nodeStream.on('error', (err) => {
+          console.warn(`[XerVault] Chunk ${i} stream notice:`, err.message);
+          finish();
+        });
+        nodeStream.on('end', () => {
+          finish();
+        });
+
         nodeStream.pipe(res, { end: isLast });
-        nodeStream.on('end', resolve);
-        nodeStream.on('error', reject);
       });
     }
   }

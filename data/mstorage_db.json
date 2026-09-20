@@ -4,14 +4,31 @@
       "id": "usr_master_mayankxer",
       "username": "mayankxer",
       "displayUsername": "@mayankxer",
-      "hashedPin": "$2a$10$y/FrUfBOpoMunMWaloBfpuH8ou0hU41lysF4/jJQ5qRXswoVu3xJC",
+      "hashedPin": "$2a$10$loqY58mjWW4inhn9j4OkVeg4LnQhWoroHN7Izh5oD7ryfCAzbi4XW",
       "role": "admin",
       "isVip": true,
       "plan": "master_creator",
       "createdAt": "2026-09-20T12:21:22.385Z"
     }
   ],
-  "files": [],
+  "files": [
+    {
+      "id": "mst_f8c55797f3",
+      "userId": "usr_master_mayankxer",
+      "uploaderUsername": "@mayankxer",
+      "name": "MyFolder.zip",
+      "storedName": "mst-1789911153770-5331c189f9c5.zip",
+      "vaultData": null,
+      "size": 361,
+      "mimeType": "application/zip",
+      "isFolder": false,
+      "isZip": true,
+      "timerSeconds": 0,
+      "downloads": 1,
+      "createdAt": "2026-09-20T13:32:33.939Z",
+      "expiresAt": null
+    }
+  ],
   "meta": {
     "app": "Mstorage",
     "developer": "Mayank Mandrai",

@@ -127,9 +127,18 @@
         <rect x="6" y="4" width="4" height="16" fill="currentColor" rx="1"/>
         <rect x="14" y="4" width="4" height="16" fill="currentColor" rx="1"/>
       </g>
-      <!-- Play Icon -->
-      <g id="icon-play">
-        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>
+      <!-- Sparkles / Liquid Glass Icon -->
+      <g id="icon-sparkles">
+        <path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4L12 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 16l1.2 2.8L22 20l-2.8 1.2L18 24l-1.2-2.8L14 20l2.8-1.2L18 16z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <!-- Palette Icon -->
+      <g id="icon-palette">
+        <circle cx="13.5" cy="6.5" r="1.5" fill="currentColor"/>
+        <circle cx="17.5" cy="10.5" r="1.5" fill="currentColor"/>
+        <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"/>
+        <circle cx="6.5" cy="12.5" r="1.5" fill="currentColor"/>
+        <path d="M12 2C6.49 2 2 6.49 2 12c0 4.41 3.59 8 8 8 1.1 0 2-.9 2-2 0-.46-.17-.89-.45-1.22-.28-.33-.45-.76-.45-1.22 0-1.1.9-2 2-2h1.9c4.42 0 8-3.58 8-8 0-5.51-4.49-10-10-10z" fill="none" stroke="currentColor" stroke-width="2"/>
       </g>
     </defs>
   </svg>
@@ -165,6 +174,20 @@
           <a href="#comparison-section" class="nav-link">Compare</a>
           <a href="#about-section" class="nav-link">About</a>
         </nav>
+
+        <!-- Dynamic Theme & Liquid Glass Controls (Desktop) -->
+        <div class="theme-control-group">
+          <div class="theme-pills" id="theme-pills-bar" role="radiogroup" aria-label="Visual Theme Selector">
+            <button type="button" class="theme-pill active" data-theme-set="default" title="Midnight Cyber (Default)">Default</button>
+            <button type="button" class="theme-pill" data-theme-set="ice-blue" title="Ocean Ice & Deep Blue">Ice Blue</button>
+            <button type="button" class="theme-pill" data-theme-set="aurora" title="Aurora Hyper-Gradient">Aurora</button>
+          </div>
+          <button type="button" id="btn-toggle-glass" class="btn btn-glass-toggle" title="Toggle Liquid Glass Refraction On/Off">
+            <span class="glass-indicator-dot"></span>
+            <svg class="svg-icon svg-sm"><use href="#icon-sparkles"/></svg>
+            <span id="glass-toggle-label">Liquid Glass: OFF</span>
+          </button>
+        </div>
 
         <!-- Isolated Guest Download Badge (Shown only on shared download page) -->
         <div id="guest-download-badge" class="guest-download-badge hidden">
@@ -212,6 +235,32 @@
       <!-- Drawer User / Profile Card -->
       <div id="drawer-auth-section" class="drawer-auth-box">
         <!-- Injected dynamically by app.js: Profile details + login/logout -->
+      </div>
+
+      <!-- Drawer Theme & Liquid Glass Section -->
+      <div class="drawer-theme-box">
+        <div class="drawer-theme-header">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <svg class="svg-icon svg-sm"><use href="#icon-palette"/></svg>
+            <span>Visual Theme</span>
+          </div>
+          <span style="font-size: 0.72rem; color: var(--text-subtle);">3 Themes</span>
+        </div>
+        <div class="drawer-theme-pills" id="drawer-theme-pills">
+          <button type="button" class="theme-pill active" data-theme-set="default">Default</button>
+          <button type="button" class="theme-pill" data-theme-set="ice-blue">Ice Blue</button>
+          <button type="button" class="theme-pill" data-theme-set="aurora">Aurora</button>
+        </div>
+        <div class="drawer-glass-toggle-row">
+          <div class="drawer-glass-label">
+            <svg class="svg-icon svg-sm"><use href="#icon-sparkles"/></svg>
+            <span>Liquid Glass</span>
+          </div>
+          <button type="button" id="btn-drawer-toggle-glass" class="btn btn-glass-toggle btn-sm">
+            <span class="glass-indicator-dot"></span>
+            <span id="drawer-glass-toggle-label">OFF</span>
+          </button>
+        </div>
       </div>
 
       <!-- Drawer Navigation Options List -->
@@ -724,19 +773,34 @@
           <!-- Architecture Highlights -->
           <div class="about-features-grid">
             <div class="about-feature-box">
-              <div class="about-icon"><svg class="svg-icon"><use href="#icon-lock"/></svg></div>
-              <h4>Frictionless PIN Security</h4>
-              <p>Forget complex passwords and OTPs. Claim your @username, choose a 4-digit PIN, and access your vault from any mobile, tablet, or PC worldwide.</p>
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-cloud-upload"/></svg></div>
+              <h4>Direct Single-Stream (Default)</h4>
+              <p>The core reliable streaming engine. Transfers complete files in a single unified atomic pipeline. Multi-file folders are automatically archived into clean, zero-corruption <strong>.zip</strong> packages on upload.</p>
             </div>
             <div class="about-feature-box">
-              <div class="about-icon"><svg class="svg-icon"><use href="#icon-speed"/></svg></div>
-              <h4>Direct Network Streaming</h4>
-              <p>Files stream directly between clients and high-speed memory buffers, offering maximum download speeds bounded only by your network bandwidth.</p>
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-zap"/></svg></div>
+              <h4>Parallel Chunks Engine (Beta)</h4>
+              <p>Engineered for massive files (10MB–100GB+). Employs concurrent client slicing, SHA-256 fingerprint deduplication (0.05s instant upload), and smart auto-fallback to Direct Stream if network drops.</p>
             </div>
             <div class="about-feature-box">
               <div class="about-icon"><svg class="svg-icon"><use href="#icon-server"/></svg></div>
-              <h4>Safe Storage Guarantee</h4>
-              <p>Engineered to never overload your host server disk with configurable retention, instant manual purge, and zero bloat footprint.</p>
+              <h4>XerVault Cloud Storage</h4>
+              <p>Proprietary cloud storage layer built by Mayank Mandrai. Streams files transparently to cloud storage, unlinking local disk files so host servers store <strong>0 MB</strong> with atomic database backups.</p>
+            </div>
+            <div class="about-feature-box">
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-sparkles"/></svg></div>
+              <h4>Dynamic Themes &amp; Liquid Glass</h4>
+              <p>Three curated themes: <strong>Default Midnight</strong>, <strong>Ocean Ice Blue</strong>, and <strong>Aurora Hyper-Gradient</strong>. Users can freely toggle real-time optical <strong>Liquid Glass</strong> refraction on or off anytime.</p>
+            </div>
+            <div class="about-feature-box">
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-lock"/></svg></div>
+              <h4>Frictionless PIN Security</h4>
+              <p>Forget email verifications, passwords, and captchas. Claim your @username, set a 4-digit PIN, and access your vault from any mobile phone, tablet, or laptop worldwide.</p>
+            </div>
+            <div class="about-feature-box">
+              <div class="about-icon"><svg class="svg-icon"><use href="#icon-check"/></svg></div>
+              <h4>Byte-for-Byte File Integrity</h4>
+              <p>Deterministic synchronous assembly guarantees zero bit rot. Images, videos, archives, and codebases download with 100% cryptographic precision and exact byte counts.</p>
             </div>
           </div>
 
