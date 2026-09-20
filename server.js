@@ -743,15 +743,30 @@ app.post('/api/xerengine/chunk', authenticateToken, (req, res) => {
   const chunkPath = path.join(sessionDir, `chunk_${chunkIndex}`);
   const writeStream = fs.createWriteStream(chunkPath);
 
+  req.on('error', (err) => {
+    console.error(`XerEngine chunk req error [${uploadId} chunk ${chunkIndex}]:`, err.message);
+    try { writeStream.destroy(); } catch (e) {}
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Network error reading chunk stream' });
+    }
+  });
+
   req.pipe(writeStream);
 
   writeStream.on('finish', () => {
-    return res.status(200).json({ success: true, chunkIndex });
+    try {
+      const stat = fs.statSync(chunkPath);
+      return res.status(200).json({ success: true, chunkIndex, size: stat.size });
+    } catch (e) {
+      return res.status(200).json({ success: true, chunkIndex });
+    }
   });
 
   writeStream.on('error', (err) => {
     console.error(`XerEngine chunk write error [${uploadId} chunk ${chunkIndex}]:`, err);
-    return res.status(500).json({ error: 'Failed to write chunk' });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Failed to write chunk' });
+    }
   });
 });
 
@@ -801,22 +816,14 @@ app.post('/api/xerengine/finalize', authenticateToken, async (req, res) => {
       console.warn('Could not remove sessionDir immediately:', rmErr);
     }
 
-    // Vault processing: stream to Telegram Cloud & wipe local copy
-    let vaultData = null;
-    let finalStoredName = storedName;
-    if (telegramVault.isConfigured()) {
-      vaultData = await telegramVault.uploadFileToVault(finalPath, meta.fileName, mime.lookup(meta.fileName) || 'application/octet-stream', true);
-      finalStoredName = null;
-    }
-
     const db = readDB();
     const record = {
       id: fileId,
       userId: req.user.id,
       uploaderUsername: req.user.displayUsername,
       name: meta.fileName,
-      storedName: finalStoredName,
-      vaultData: vaultData,
+      storedName: storedName,
+      vaultData: null,
       size: stat.size,
       mimeType: mime.lookup(meta.fileName) || 'application/octet-stream',
       isFolder: false,
@@ -833,6 +840,28 @@ app.post('/api/xerengine/finalize', authenticateToken, async (req, res) => {
     writeDB(db);
 
     console.log(`[XerEngine] Successfully assembled "${meta.fileName}" (${(stat.size / (1024 * 1024)).toFixed(2)} MB) from ${meta.totalChunks} parallel chunks!`);
+
+    // Asynchronously archive to Telegram Vault in background without blocking the HTTP response
+    if (telegramVault.isConfigured()) {
+      setImmediate(async () => {
+        try {
+          console.log(`[XerVault] Asynchronously vaulting "${meta.fileName}" (${fileId}) to cloud...`);
+          const vData = await telegramVault.uploadFileToVault(finalPath, meta.fileName, mime.lookup(meta.fileName) || 'application/octet-stream', true);
+          if (vData) {
+            const currentDb = readDB();
+            const f = currentDb.files.find(item => item.id === fileId);
+            if (f) {
+              f.vaultData = vData;
+              f.storedName = null; // Unlinked from disk
+              writeDB(currentDb);
+              console.log(`[XerVault] Successfully completed background vault for "${meta.fileName}"!`);
+            }
+          }
+        } catch (vErr) {
+          console.error(`[XerVault] Background vault notice for "${meta.fileName}":`, vErr.message);
+        }
+      });
+    }
 
     return res.status(201).json({
       message: 'XerEngine upload completed and assembled',
@@ -1131,6 +1160,58 @@ app.post('/api/files/replace/:id', authenticateToken, upload.single('file'), asy
   } catch (err) {
     console.error('Replace error:', err);
     return res.status(500).json({ error: 'Failed to replace file content' });
+  }
+});
+
+// Delete all files & folders in user's vault (Bulk Purge)
+app.delete('/api/files/all', authenticateToken, (req, res) => {
+  try {
+    const db = readDB();
+
+    // Find all files belonging to this user
+    const filesToDelete = db.files.filter(f => isFileOwnerOrAdmin(f, req.user));
+
+    if (!filesToDelete || filesToDelete.length === 0) {
+      return res.json({ message: 'Your vault is already empty', deletedCount: 0 });
+    }
+
+    // Clean up physical and vault files for each
+    filesToDelete.forEach(file => {
+      try {
+        if (file.vaultData) {
+          telegramVault.deleteFromVault(file.vaultData);
+        }
+        if (file.isFolder && file.items) {
+          file.items.forEach(item => {
+            if (item.vaultData) telegramVault.deleteFromVault(item.vaultData);
+            if (item.storedName) {
+              const p = path.join(STORAGE_DIR, item.storedName);
+              if (fs.existsSync(p)) fs.unlinkSync(p);
+            }
+          });
+        } else if (file.storedName) {
+          const p = path.join(STORAGE_DIR, file.storedName);
+          if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
+      } catch (err) {
+        console.error('File unlink error during bulk purge:', err.message);
+      }
+    });
+
+    const deletedCount = filesToDelete.length;
+    db.files = db.files.filter(f => !isFileOwnerOrAdmin(f, req.user));
+
+    writeDB(db);
+    console.log(`[Vault Purge] User "${req.user.username}" purged ${deletedCount} files/folders from vault.`);
+
+    return res.json({
+      success: true,
+      message: `Successfully deleted ${deletedCount} files and folders from your vault.`,
+      deletedCount
+    });
+  } catch (err) {
+    console.error('Bulk file purge error:', err);
+    return res.status(500).json({ error: 'Failed to purge files from vault: ' + err.message });
   }
 });
 

@@ -146,7 +146,7 @@
         </div>
         <div class="brand-text">
           <span class="brand-name">Mstorage</span>
-          <span class="brand-badge">PRO</span>
+          <span class="brand-badge badge-beta">BETA v1.0</span>
         </div>
       </a>
 
@@ -199,7 +199,7 @@
           <div>
             <div class="brand-text">
               <span class="brand-name" style="font-size: 1.15rem;">Mstorage</span>
-              <span class="brand-badge">PRO</span>
+              <span class="brand-badge badge-beta">BETA v1.0</span>
             </div>
             <span class="drawer-dev-tag">By Mayank Mandrai</span>
           </div>
@@ -263,7 +263,7 @@
           <span class="live-dot"></span>
           <span id="drawer-storage-status">Cloud Storage 24/7 Active • 0 Delay</span>
         </div>
-        <span class="drawer-version">&copy; 2026 Mstorage PRO • Mayank Mandrai</span>
+        <span class="drawer-version">&copy; 2026 Mstorage Beta v1.0 • Mayank Mandrai</span>
       </div>
     </div>
   </div>
@@ -397,31 +397,6 @@
               <h2 class="dropzone-title">Drag &amp; Drop Files or Select Below</h2>
               <p class="dropzone-hint">Upload single files, zip archives, or entire directories with one click.</p>
               
-              <!-- Prominent Mode Switcher: Parallel Chunks vs Full Upload -->
-              <div class="mode-switch-card">
-                <div class="mode-switch-title">
-                  <span class="live-dot"></span>
-                  <span>Choose Upload Method:</span>
-                </div>
-                <div class="mode-switch-buttons">
-                  <button type="button" class="btn-mode-choice active" id="btn-mode-turbo" data-mode="turbo">
-                    <span class="mode-choice-icon">⚡</span>
-                    <div class="mode-choice-text">
-                      <strong>Parallel Upload (Chunks me)</strong>
-                      <span>High-speed parallel streams &bull; Best for large files</span>
-                    </div>
-                  </button>
-
-                  <button type="button" class="btn-mode-choice" id="btn-mode-direct" data-mode="direct">
-                    <span class="mode-choice-icon">🛡️</span>
-                    <div class="mode-choice-text">
-                      <strong>Full Upload (Ek hi file me)</strong>
-                      <span>Continuous direct stream &bull; 100% steady speed</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
               <!-- 3 Dedicated Upload Buttons -->
               <div class="upload-buttons-group">
                 <!-- 1. Files Upload -->
@@ -460,8 +435,14 @@
                 <span>Upload Engine:</span>
               </div>
               <div class="pill-selectors" id="upload-mode-selector">
-                <button type="button" class="pill-btn active" data-mode="turbo" title="Multi-Stream Sliced Chunks for Maximum Speed">⚡ Turbo Chunks</button>
-                <button type="button" class="pill-btn" data-mode="direct" title="Direct Single-Stream Raw Upload (100% Solid &amp; Zero Slicing)">🛡️ Direct Stream (Normal)</button>
+                <button type="button" class="pill-btn active" data-mode="direct" title="Direct Single-Stream Raw Upload (100% Solid &amp; Reliable)">
+                  <svg class="svg-icon svg-xs"><use href="#icon-cloud-upload"/></svg>
+                  <span>Direct Stream (Default)</span>
+                </button>
+                <button type="button" class="pill-btn" data-mode="turbo" title="Multi-Stream Sliced Chunks for Maximum Speed (Beta)">
+                  <svg class="svg-icon svg-xs"><use href="#icon-zap"/></svg>
+                  <span>Parallel Chunks (Beta)</span>
+                </button>
               </div>
             </div>
 
@@ -589,6 +570,10 @@
               <div class="storage-usage-pill" id="storage-usage-pill">
                 <span id="vault-storage-text">0 Files</span>
               </div>
+              <button type="button" id="btn-clear-vault" class="btn btn-outline-danger btn-sm" title="Delete all files and folders in your vault">
+                <svg class="svg-icon svg-xs"><use href="#icon-trash"/></svg>
+                <span>Clear All</span>
+              </button>
             </div>
           </div>
 
@@ -742,7 +727,7 @@
               <div class="dev-role-badge">Lead Developer &amp; Creator</div>
               <h2 class="dev-name">Mayank Mandrai</h2>
               <p class="dev-bio">
-                Mstorage PRO was engineered by <strong>Mayank Mandrai</strong> to redefine personal cloud storage. Powered by the proprietary <strong>XerVault Unlimited Engine</strong>, Mstorage stores 0 MB on host servers, delivers permanent infinite cloud storage, 4-digit PIN authentication, and ultra-fast direct streaming without intrusive ads.
+                Mstorage (Beta v1.0) was engineered by <strong>Mayank Mandrai</strong> to redefine personal cloud storage. Powered by the proprietary <strong>XerVault Unlimited Engine</strong>, Mstorage stores 0 MB on host servers, delivers permanent infinite cloud storage, 4-digit PIN authentication, and ultra-fast direct streaming without intrusive ads.
               </p>
               <div class="dev-stats-strip">
                 <div class="dev-stat">
@@ -951,6 +936,24 @@
       <div class="confirm-modal-actions">
         <button id="btn-confirm-cancel" class="btn btn-secondary btn-block">Cancel</button>
         <button id="btn-confirm-delete" class="btn btn-danger btn-block">Delete File</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Entire Vault Confirmation Modal -->
+  <div id="clear-vault-modal" class="modal-backdrop hidden">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div class="modal-icon-badge modal-icon-danger">
+          <svg class="svg-icon"><use href="#icon-trash"/></svg>
+        </div>
+        <h3>Clear Entire Vault?</h3>
+        <p>This will permanently delete ALL files and folders from your account. This action cannot be undone.</p>
+      </div>
+
+      <div class="confirm-modal-actions">
+        <button type="button" id="btn-cancel-clear-vault" class="btn btn-secondary btn-block">Cancel</button>
+        <button type="button" id="btn-confirm-clear-vault" class="btn btn-danger btn-block">Delete Everything</button>
       </div>
     </div>
   </div>

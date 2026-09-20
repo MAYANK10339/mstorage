@@ -13,7 +13,7 @@
     user: JSON.parse(localStorage.getItem('mst_user') || 'null'),
     currentTimer: 0,
     currentRetention: 0,
-    uploadMode: 'turbo', // 'turbo' | 'direct'
+    uploadMode: 'direct', // 'direct' (default reliable stream) | 'turbo' (parallel chunks beta)
     files: [],
     activeDownloadFile: null,
     pendingDeleteId: null,
@@ -80,6 +80,7 @@
     emptyVaultState: document.getElementById('empty-vault-state'),
     vaultSearchInput: document.getElementById('vault-search-input'),
     vaultStorageText: document.getElementById('vault-storage-text'),
+    btnClearVault: document.getElementById('btn-clear-vault'),
 
     // Public Download Page
     dlFileName: document.getElementById('dl-file-name'),
@@ -131,6 +132,11 @@
     confirmModal: document.getElementById('confirm-modal'),
     btnConfirmCancel: document.getElementById('btn-confirm-cancel'),
     btnConfirmDelete: document.getElementById('btn-confirm-delete'),
+
+    // Clear Vault Modal
+    clearVaultModal: document.getElementById('clear-vault-modal'),
+    btnCancelClearVault: document.getElementById('btn-cancel-clear-vault'),
+    btnConfirmClearVault: document.getElementById('btn-confirm-clear-vault'),
 
     // Toasts
     toastContainer: document.getElementById('toast-container')
@@ -444,13 +450,7 @@
   // FILE UPLOADS (Files, Zip, Folder)
   // -----------------------------------------------------------------
   function setUploadMode(mode) {
-    state.uploadMode = mode === 'direct' ? 'direct' : 'turbo';
-
-    // Synchronize mode card buttons
-    const btnTurbo = document.getElementById('btn-mode-turbo');
-    const btnDirect = document.getElementById('btn-mode-direct');
-    if (btnTurbo) btnTurbo.classList.toggle('active', state.uploadMode === 'turbo');
-    if (btnDirect) btnDirect.classList.toggle('active', state.uploadMode === 'direct');
+    state.uploadMode = mode === 'turbo' ? 'turbo' : 'direct';
 
     // Synchronize options bar pills
     if (el.uploadModeSelector) {
@@ -460,27 +460,17 @@
     }
 
     showToast(state.uploadMode === 'turbo' 
-      ? '⚡ Parallel Upload (Chunks me) Active — High-speed parallel streams' 
-      : '🛡️ Full Upload (Ek hi file me) Active — Consistent steady wire speed', 'info');
+      ? 'Parallel Chunks Mode (Beta) Active — High-speed parallel streams' 
+      : 'Direct Stream Mode Active — 100% Consistent & Reliable', 'info');
   }
 
   function setupUploadHandlers() {
-    // Mode Switcher Buttons (Parallel Chunks vs Full Direct Upload)
-    const btnTurbo = document.getElementById('btn-mode-turbo');
-    const btnDirect = document.getElementById('btn-mode-direct');
-    if (btnTurbo) {
-      btnTurbo.addEventListener('click', () => setUploadMode('turbo'));
-    }
-    if (btnDirect) {
-      btnDirect.addEventListener('click', () => setUploadMode('direct'));
-    }
-
     // Upload Engine Mode Selector in options bar
     if (el.uploadModeSelector) {
       el.uploadModeSelector.addEventListener('click', (e) => {
         const btn = e.target.closest('.pill-btn');
         if (!btn) return;
-        setUploadMode(btn.getAttribute('data-mode') || 'turbo');
+        setUploadMode(btn.getAttribute('data-mode') || 'direct');
       });
     }
 
@@ -522,19 +512,17 @@
       el.dropzone.classList.remove('drag-active');
     });
 
-    el.dropzone.addEventListener('drop', (e) => {
+    el.dropzone.addEventListener('drop', async (e) => {
       e.preventDefault();
       el.dropzone.classList.remove('drag-active');
       if (!ensureAuth()) return;
 
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const files = Array.from(e.dataTransfer.files);
-        const firstRel = files[0].webkitRelativePath;
-        if (firstRel && firstRel.includes('/')) {
-          const folderName = firstRel.split('/')[0];
-          uploadFolderBundle(files, folderName);
+      const scanned = await scanFilesFromDataTransfer(e.dataTransfer);
+      if (scanned.files && scanned.files.length > 0) {
+        if (scanned.isFolder) {
+          uploadFolderBundle(scanned.files, scanned.folderName);
         } else {
-          uploadFileList(files, 'file');
+          uploadFileList(scanned.files, 'file');
         }
       }
     });
@@ -552,6 +540,71 @@
     el.selectRetention.addEventListener('change', (e) => {
       state.currentRetention = parseInt(e.target.value, 10) || 0;
     });
+  }
+
+  // Recursive directory scanner for folder drag & drop
+  async function scanFilesFromDataTransfer(dataTransfer) {
+    const files = [];
+    let detectedFolderName = '';
+
+    if (dataTransfer.items && dataTransfer.items.length > 0) {
+      const entries = [];
+      for (let i = 0; i < dataTransfer.items.length; i++) {
+        const item = dataTransfer.items[i];
+        if (item.webkitGetAsEntry) {
+          const entry = item.webkitGetAsEntry();
+          if (entry) entries.push(entry);
+        }
+      }
+
+      if (entries.length > 0) {
+        async function readEntry(entry, pathPrefix = '') {
+          if (entry.isFile) {
+            return new Promise((res) => {
+              entry.file((f) => {
+                try {
+                  Object.defineProperty(f, 'webkitRelativePath', {
+                    value: pathPrefix + f.name,
+                    writable: true
+                  });
+                } catch (e) {}
+                files.push(f);
+                res();
+              }, () => res());
+            });
+          } else if (entry.isDirectory) {
+            if (!detectedFolderName) detectedFolderName = entry.name;
+            const dirReader = entry.createReader();
+            const readBatch = () => new Promise((res) => {
+              dirReader.readEntries(async (subEntries) => {
+                if (subEntries && subEntries.length > 0) {
+                  for (const sub of subEntries) {
+                    await readEntry(sub, pathPrefix + entry.name + '/');
+                  }
+                  await readBatch();
+                }
+                res();
+              }, () => res());
+            });
+            await readBatch();
+          }
+        }
+
+        for (const ent of entries) {
+          await readEntry(ent, '');
+        }
+
+        if (files.length > 0) {
+          return { files, folderName: detectedFolderName, isFolder: !!detectedFolderName };
+        }
+      }
+    }
+
+    const rawFiles = Array.from(dataTransfer.files || []);
+    const firstRel = rawFiles.length > 0 ? rawFiles[0].webkitRelativePath : '';
+    const isFolder = Boolean(firstRel && firstRel.includes('/'));
+    const fName = isFolder ? firstRel.split('/')[0] : '';
+    return { files: rawFiles, folderName: fName, isFolder };
   }
 
   function getFolderNameFromFiles(files) {
@@ -803,7 +856,7 @@
           },
           onInstantHit: (record) => {
             if (el.xerInstantBanner) el.xerInstantBanner.classList.remove('hidden');
-            showToast('⚡ XerEngine Instant Hit: Uploaded in 0.05s!', 'success');
+            showToast('XerEngine Instant Hit: Uploaded in 0.05s!', 'success');
           },
           onStateChange: (newState) => {
             if (newState === 'fingerprinting') {
@@ -837,10 +890,16 @@
             currentXerUpload = null;
             resolve();
           },
-          onError: (err) => {
-            showToast(`Upload failed: ${err.message}`, 'error');
-            el.uploadProgressPanel.classList.add('hidden');
+          onError: async (err) => {
+            console.warn('[XerEngine Beta Notice] Parallel chunks issue:', err.message);
+            showToast('Parallel chunks notice. Completing upload with Direct Stream...', 'info');
             currentXerUpload = null;
+            try {
+              await uploadWithDirectStream([file]);
+            } catch (fallbackErr) {
+              showToast(`Direct stream error: ${fallbackErr.message}`, 'error');
+              el.uploadProgressPanel.classList.add('hidden');
+            }
             resolve();
           }
         });
@@ -1221,6 +1280,52 @@
     }
   }
 
+  // Clear Entire Vault (Delete All Files & Folders)
+  function promptClearVault() {
+    if (!ensureAuth()) return;
+    if (!state.files || state.files.length === 0) {
+      showToast('Your vault is already empty', 'info');
+      return;
+    }
+    if (el.clearVaultModal) {
+      el.clearVaultModal.classList.remove('hidden');
+    }
+  }
+
+  function closeClearVaultModal() {
+    if (el.clearVaultModal) {
+      el.clearVaultModal.classList.add('hidden');
+    }
+  }
+
+  async function executeClearVault() {
+    closeClearVaultModal();
+    if (!ensureAuth()) return;
+
+    try {
+      const res = await fetch('/api/files/all', {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${state.token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        state.files = [];
+        renderFiles();
+        showToast(data.message || 'All files and folders permanently deleted', 'success');
+      } else {
+        if (res.status === 401 || res.status === 403) {
+          showToast(data.error || 'Session expired. Please sign in again.', 'error');
+          openAuthModal('login');
+        } else {
+          showToast(data.error || 'Failed to clear vault', 'error');
+        }
+      }
+    } catch (err) {
+      showToast('Network error while clearing vault', 'error');
+    }
+  }
+
   // -----------------------------------------------------------------
   // PURE DIRECT LINK SHARING
   // -----------------------------------------------------------------
@@ -1459,6 +1564,22 @@
     el.confirmModal.addEventListener('click', (e) => {
       if (e.target === el.confirmModal) closeConfirmModal();
     });
+
+    // Clear Vault Modal
+    if (el.btnClearVault) {
+      el.btnClearVault.addEventListener('click', promptClearVault);
+    }
+    if (el.btnCancelClearVault) {
+      el.btnCancelClearVault.addEventListener('click', closeClearVaultModal);
+    }
+    if (el.btnConfirmClearVault) {
+      el.btnConfirmClearVault.addEventListener('click', executeClearVault);
+    }
+    if (el.clearVaultModal) {
+      el.clearVaultModal.addEventListener('click', (e) => {
+        if (e.target === el.clearVaultModal) closeClearVaultModal();
+      });
+    }
 
     // Copy direct share link button
     el.btnCopyShareUrl.addEventListener('click', () => {
