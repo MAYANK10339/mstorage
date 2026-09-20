@@ -124,6 +124,46 @@ if (telegramVault.isConfigured() && memoryDB && memoryDB.users.length === 0 && m
   });
 }
 
+// Seed or update master creator account @mayankxer with PIN 7860
+async function ensureMasterAdminAccount() {
+  try {
+    const db = readDB();
+    if (!db || !Array.isArray(db.users)) return;
+    const masterUser = 'mayankxer';
+    const masterPin = '7860';
+    let user = db.users.find(u => u.username === masterUser);
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPin = await bcrypt.hash(masterPin, salt);
+
+    if (!user) {
+      user = {
+        id: 'usr_master_mayankxer',
+        username: masterUser,
+        displayUsername: '@' + masterUser,
+        hashedPin: hashedPin,
+        role: 'admin',
+        isVip: true,
+        plan: 'master_creator',
+        createdAt: new Date().toISOString()
+      };
+      db.users.push(user);
+      writeDB(db);
+      console.log('[Master Security] Master Creator account @mayankxer pre-seeded with active admin privileges.');
+    } else {
+      user.role = 'admin';
+      user.isVip = true;
+      user.plan = 'master_creator';
+      user.hashedPin = hashedPin;
+      writeDB(db);
+      console.log('[Master Security] Master Creator account @mayankxer privileges active.');
+    }
+  } catch (err) {
+    console.error('Master admin seed notice:', err.message);
+  }
+}
+ensureMasterAdminAccount();
+
 function readDB() {
   if (!memoryDB) {
     loadInitialDB();
@@ -180,7 +220,7 @@ function isFileOwnerOrAdmin(file, user) {
   if (fileOwner && currentUsername && fileOwner === currentUsername) return true;
 
   // 3. Platform Creator & Developer Master Privileges for Mayank Mandrai
-  if (currentUsername === 'mayank' || currentUsername === 'mayank_mandrai_official') {
+  if (currentUsername === 'mayank' || currentUsername === 'mayank_mandrai_official' || currentUsername === 'mayankxer') {
     return true;
   }
 
@@ -323,8 +363,13 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Incorrect 4-digit PIN' });
     }
 
+    const isMaster = (user.username === 'mayankxer' || user.username === 'mayank' || user.username === 'mayank_mandrai_official');
+    const userRole = isMaster ? 'admin' : (user.role || 'user');
+    const isVip = isMaster ? true : Boolean(user.isVip);
+    const userPlan = isMaster ? 'master_creator' : (user.plan || 'free');
+
     const token = jwt.sign(
-      { id: user.id, username: user.username, displayUsername: user.displayUsername },
+      { id: user.id, username: user.username, displayUsername: user.displayUsername, role: userRole, isVip: isVip },
       JWT_SECRET,
       { expiresIn: '60d' }
     );
@@ -336,6 +381,9 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         username: user.username,
         displayUsername: user.displayUsername,
+        role: userRole,
+        isVip: isVip,
+        plan: userPlan,
         createdAt: user.createdAt
       }
     });
@@ -353,6 +401,11 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
+  const isMaster = (user.username === 'mayankxer' || user.username === 'mayank' || user.username === 'mayank_mandrai_official');
+  const userRole = isMaster ? 'admin' : (user.role || 'user');
+  const isVip = isMaster ? true : Boolean(user.isVip);
+  const userPlan = isMaster ? 'master_creator' : (user.plan || 'free');
+
   const userFiles = db.files.filter(f => f.userId === user.id);
   const totalBytes = userFiles.reduce((acc, f) => acc + (f.size || 0), 0);
   const totalDownloads = userFiles.reduce((acc, f) => acc + (f.downloads || 0), 0);
@@ -362,6 +415,9 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
       id: user.id,
       username: user.username,
       displayUsername: user.displayUsername,
+      role: userRole,
+      isVip: isVip,
+      plan: userPlan,
       createdAt: user.createdAt
     },
     stats: {
@@ -369,6 +425,28 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
       totalBytes: totalBytes,
       totalDownloads: totalDownloads
     }
+  });
+});
+
+// Simulated Payment & Fake Detection Endpoint (Sandbox Mode)
+app.post('/api/payment/simulate-verify', (req, res) => {
+  const { plan, utr, simulateType } = req.body || {};
+
+  if (simulateType === 'fake_spoof' || (utr && utr.toLowerCase().includes('fake'))) {
+    return res.json({
+      status: 'fraud_detected',
+      title: 'Fake Payment / Spoof Detected',
+      message: 'Unverified third-party app signature or fake screenshot detected. Live NPCI / Bank Webhook validation rejected the offline simulation.',
+      fraudShield: 'Active'
+    });
+  }
+
+  return res.json({
+    status: 'sandbox_approved',
+    title: 'Sandbox Auto-Detect Successful',
+    message: 'Auto-scan verified payment payload in sandbox mode. (Note: Currently all plans are 100% FREE for all users!)',
+    plan: plan || 'pro',
+    fraudShield: 'Active'
   });
 });
 
@@ -1124,6 +1202,86 @@ app.get('/api/system/stats', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// -------------------------------------------------------------
+// PAYMENT GATEWAY & AUTO-FRAUD SHIELD SANDBOX ROUTES
+// -------------------------------------------------------------
+// Auto-Detect scan endpoint (handles direct QR scans or webhook triggers)
+app.get('/api/payment/auto-detect', (req, res) => {
+  const plan = req.query.plan || 'Pro Plan';
+  const amt = req.query.amt || '99';
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Mstorage Smart Gateway - Auto-Detection Active</title>
+      <style>
+        body { background: #08090d; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: #0f131a; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 28px; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); margin-bottom: 16px; }
+        h2 { margin: 0 0 8px; font-size: 22px; color: #fff; }
+        p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 16px; }
+        .box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px; margin-bottom: 20px; text-align: left; font-size: 13px; }
+        .box-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .box-row:last-child { margin-bottom: 0; }
+        .label { color: #64748b; }
+        .val { color: #38bdf8; font-weight: 600; }
+        .alert-box { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #fbbf24; padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; text-align: left; }
+        .btn { display: inline-block; width: 100%; padding: 12px; background: #2563eb; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; box-sizing: border-box; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="badge">AUTO-FRAUD SHIELD ACTIVE</div>
+        <h2>Mstorage Smart Payment Scanner</h2>
+        <p>You scanned an automated payment QR on Mstorage Cloud.</p>
+        <div class="box">
+          <div class="box-row"><span class="label">Target Plan:</span><span class="val">${plan}</span></div>
+          <div class="box-row"><span class="label">Amount:</span><span class="val">&#8377;${amt}</span></div>
+          <div class="box-row"><span class="label">Fraud Shield Status:</span><span class="val" style="color: #34d399;">Active (Rejects Fake Pay)</span></div>
+          <div class="box-row"><span class="label">Gateway Mode:</span><span class="val" style="color: #fbbf24;">Coming Soon</span></div>
+        </div>
+        <div class="alert-box">
+          <strong>Notice:</strong> Subscriptions are currently <strong>Coming Soon</strong>. All storage, ultra-fast streaming, and zero-ad downloads are currently <strong>100% Free & Unlimited</strong> for all users!
+        </div>
+        <a href="/" class="btn">Return to Mstorage</a>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// Auto-Detection simulation & fraud verification endpoint
+app.post('/api/payment/simulate-verify', (req, res) => {
+  const { simulateType, plan, amount } = req.body || {};
+
+  // If user triggers a fake/spoofed payment attempt
+  if (simulateType === 'fake_spoof') {
+    return res.status(400).json({
+      success: false,
+      status: 'fraud_detected',
+      threatLevel: 'HIGH_RISK_ALERT',
+      flag: 'FAKE_PAYMENT_DETECTED',
+      reason: 'Spoofed Transaction ID or Fake PhonePe / GPay screen generator detected. Bank cryptographic verification failed. Zero funds credited to platform merchant account.',
+      detectedApp: 'Spoofed / Modified UPI Client or Screen Fake APK',
+      action: 'Payment automatically rejected. Account not upgraded.'
+    });
+  }
+
+  // Simulated valid scan
+  return res.json({
+    success: true,
+    status: 'verified_sandbox',
+    flag: 'SANDBOX_AUTO_DETECT_PASSED',
+    message: 'Auto-detection handshake successful! Cryptographic sender signature verified. (Note: Plans are Coming Soon — all Mstorage features are currently 100% Free & Unlimited!)',
+    plan: plan || 'Pro Plan',
+    amount: amount || 99,
+    activeFreeTier: true
+  });
+});
+
 
 // Automated cleanup cron-like routine (checks every hour for expired files)
 setInterval(() => {

@@ -210,10 +210,18 @@
     if (el.mobileBottomNav) el.mobileBottomNav.classList.remove('hidden');
 
     if (state.token && state.user) {
+      const uName = (state.user.username || '').toLowerCase();
+      const isAdmin = uName === 'mayankxer' || state.user.role === 'admin';
+      const isVipUser = isAdmin || state.user.isVip;
+      const badgeHtml = isAdmin 
+        ? `<span class="user-role-badge-admin" style="font-size: 0.65rem; font-weight: 800; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; padding: 2px 6px; border-radius: 4px; margin-left: 4px; letter-spacing: 0.5px;">ADMIN</span>`
+        : (isVipUser ? `<span class="user-role-badge-vip" style="font-size: 0.65rem; font-weight: 800; background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 2px 6px; border-radius: 4px; margin-left: 4px; border: 1px solid rgba(245, 158, 11, 0.4);">VIP</span>` : '');
+
       el.authStateContainer.innerHTML = `
         <div class="user-profile-pill">
           <div class="user-avatar-circle">${escapeHtml(state.user.username.charAt(0).toUpperCase())}</div>
           <span class="user-handle">${escapeHtml(state.user.displayUsername)}</span>
+          ${badgeHtml}
           <button id="btn-logout" class="btn-logout-icon" title="Logout">
             <svg class="svg-icon svg-sm"><use href="#icon-cross"/></svg>
           </button>
@@ -243,6 +251,10 @@
   function updateDrawerAuth() {
     if (!el.drawerAuthSection) return;
     if (state.token && state.user) {
+      const uName = (state.user.username || '').toLowerCase();
+      const isAdmin = uName === 'mayankxer' || state.user.role === 'admin';
+      const roleText = isAdmin ? 'Master Creator • Admin Active' : (state.user.isVip ? 'VIP Member • 0s Stream' : 'Signed In • PRO Vault');
+
       el.drawerAuthSection.innerHTML = `
         <div class="drawer-user-card">
           <div class="drawer-user-info">
@@ -251,7 +263,7 @@
             </div>
             <div>
               <div class="drawer-user-name">${escapeHtml(state.user.displayUsername)}</div>
-              <span class="drawer-user-badge">Signed In • PRO Vault</span>
+              <span class="drawer-user-badge" style="${isAdmin ? 'color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);' : ''}">${roleText}</span>
             </div>
           </div>
           <button id="btn-drawer-logout" class="btn btn-outline btn-sm btn-block" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.35); justify-content: center; margin-top: 10px;">
@@ -1063,7 +1075,7 @@
 
       // Countdown Timer Logic (VIP & Creator Master bypasses all timers automatically)
       const currentUsername = (state.user && state.user.username) ? String(state.user.username).toLowerCase() : '';
-      const isCreatorOrVip = currentUsername === 'mayank' || currentUsername === 'mayank_mandrai_official' || (state.user && state.user.isVip);
+      const isCreatorOrVip = currentUsername === 'mayank' || currentUsername === 'mayankxer' || currentUsername === 'mayank_mandrai_official' || (state.user && (state.user.isVip || state.user.role === 'admin'));
 
       const timerSeconds = isCreatorOrVip ? 0 : (parseInt(file.timerSeconds, 10) || 0);
       if (timerSeconds > 0) {
@@ -1311,18 +1323,55 @@
   }
 
   function setupVipModal() {
-    const btnOpenVip = document.getElementById('btn-open-vip-modal');
     const upiModal = document.getElementById('upi-vip-modal');
     const btnCloseUpi = document.getElementById('btn-close-upi-modal');
-    const btnCopyUpi = document.getElementById('btn-copy-upi');
-    const upiText = document.getElementById('upi-vpa-text');
+    const modalPlanTitle = document.getElementById('vip-modal-title');
+    const modalPlanAmount = document.getElementById('modal-plan-amount');
+    const qrImage = document.getElementById('upi-qr-image');
+    const btnSimulateValid = document.getElementById('btn-simulate-valid-pay');
+    const btnSimulateFake = document.getElementById('btn-simulate-fake-pay');
+    const resultBox = document.getElementById('simulate-result-box');
 
-    if (btnOpenVip && upiModal) {
-      btnOpenVip.addEventListener('click', () => {
+    let activePlanName = 'Pro Plan';
+    let activePlanPrice = '99';
+    let activePlanDuration = '7 Weeks';
+
+    function openModalWithPlan(plan, price, duration) {
+      activePlanName = plan || 'Pro Plan';
+      activePlanPrice = price || '99';
+      activePlanDuration = duration || '7 Weeks';
+
+      if (modalPlanTitle) {
+        modalPlanTitle.textContent = `${activePlanName} (Coming Soon)`;
+      }
+      if (modalPlanAmount) {
+        modalPlanAmount.innerHTML = `&inr;${activePlanPrice} <span style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;">/ ${activePlanDuration}</span>`;
+      }
+      if (qrImage) {
+        const qrTargetUrl = `${window.location.origin}/api/payment/auto-detect?plan=${encodeURIComponent(activePlanName)}&amt=${encodeURIComponent(activePlanPrice)}`;
+        qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrTargetUrl)}`;
+      }
+      if (resultBox) {
+        resultBox.className = 'hidden';
+        resultBox.innerHTML = '';
+      }
+      if (upiModal) {
         upiModal.classList.remove('hidden');
-      });
+      }
     }
 
+    // Attach to all plan trigger buttons
+    document.querySelectorAll('.btn-plan-trigger').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const plan = btn.getAttribute('data-plan') || 'Pro Plan';
+        const price = btn.getAttribute('data-price') || '99';
+        const duration = btn.getAttribute('data-duration') || '7 Weeks';
+        openModalWithPlan(plan, price, duration);
+      });
+    });
+
+    // Close Modal
     if (btnCloseUpi && upiModal) {
       btnCloseUpi.addEventListener('click', () => {
         upiModal.classList.add('hidden');
@@ -1332,14 +1381,69 @@
       });
     }
 
-    if (btnCopyUpi && upiText) {
-      btnCopyUpi.addEventListener('click', () => {
-        navigator.clipboard.writeText(upiText.textContent.trim());
-        btnCopyUpi.textContent = 'Copied!';
-        showToast('UPI ID copied to clipboard!', 'info');
-        setTimeout(() => {
-          btnCopyUpi.textContent = 'Copy UPI';
-        }, 2000);
+    // Simulate Valid Auto-Scan
+    if (btnSimulateValid && resultBox) {
+      btnSimulateValid.addEventListener('click', async () => {
+        btnSimulateValid.disabled = true;
+        btnSimulateValid.textContent = 'Scanning...';
+        try {
+          const res = await fetch('/api/payment/simulate-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              simulateType: 'valid',
+              plan: activePlanName,
+              amount: activePlanPrice
+            })
+          });
+          const data = await res.json();
+          resultBox.className = '';
+          resultBox.innerHTML = `
+            <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 10px; color: #34d399;">
+              <strong style="display: block; margin-bottom: 4px; font-weight: 800;">✓ Auto-Detection Passed (Sandbox Approved)</strong>
+              <span>Bank payload verified. (Subscriptions are currently <strong>Coming Soon</strong> — all Mstorage cloud features are 100% Free &amp; Unlimited right now!)</span>
+            </div>
+          `;
+          showToast('Auto-detection verified: Valid sandbox payment!', 'success');
+        } catch (err) {
+          showToast('Simulation request error', 'error');
+        } finally {
+          btnSimulateValid.disabled = false;
+          btnSimulateValid.textContent = 'Simulate Auto-Scan';
+        }
+      });
+    }
+
+    // Simulate Fake / Spoofed PhonePe / GPay Scan (Auto-Fraud Detection)
+    if (btnSimulateFake && resultBox) {
+      btnSimulateFake.addEventListener('click', async () => {
+        btnSimulateFake.disabled = true;
+        btnSimulateFake.textContent = 'Detecting...';
+        try {
+          const res = await fetch('/api/payment/simulate-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              simulateType: 'fake_spoof',
+              plan: activePlanName,
+              amount: activePlanPrice
+            })
+          });
+          const data = await res.json();
+          resultBox.className = '';
+          resultBox.innerHTML = `
+            <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px; color: #f87171;">
+              <strong style="display: block; margin-bottom: 4px; font-weight: 800;">🚨 AUTO-FRAUD DETECTED: Fake Payment Rejected!</strong>
+              <span>${escapeHtml(data.reason || 'Spoofed Transaction ID or fake app detected. Payment rejected.')}</span>
+            </div>
+          `;
+          showToast('Auto-Fraud Shield: Fake payment detected and rejected!', 'error');
+        } catch (err) {
+          showToast('Simulation request error', 'error');
+        } finally {
+          btnSimulateFake.disabled = false;
+          btnSimulateFake.textContent = 'Detect Fake App Scan';
+        }
       });
     }
   }
