@@ -34,34 +34,45 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-:: 2. Identify Current Git Branch
+:: 2. Identify Current Git Branch & Remote
 set "BRANCH=main"
 for /f "tokens=*" %%b in ('"%GIT_CMD%" rev-parse --abbrev-ref HEAD 2^>nul') do (
     set "BRANCH=%%b"
 )
 echo [*] Active Branch: !BRANCH!
 
+:: Ensure remote origin is configured
+"%GIT_CMD%" remote get-url origin >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [*] Setting remote origin to https://github.com/MAYANK10339/mstorage.git ...
+    "%GIT_CMD%" remote add origin https://github.com/MAYANK10339/mstorage.git
+)
+
 :: 3. Stage All File Changes
 echo [*] Staging updated files and assets...
-"%GIT_CMD%" add .
+"%GIT_CMD%" add -A
 
-:: 4. Commit Message Setup
-set "DEFAULT_MSG=Update Mstorage Beta v1.0: 3 Themes (Midnight, Ice Blue, Aurora), Standalone Liquid Glass Toggle, Folder Auto-Zip, Download Crash Resilience & Architecture Spotlight"
+:: 4. Commit Changes If Any Exist
+set "DEFAULT_MSG=Fix upload percentage jumping, folder recursive scanner & auto-zip packaging, 3 Themes & Liquid Glass toggle"
 
-:: Check if user passed commit message as command-line argument
-set "USER_MSG=%~1"
-if not defined USER_MSG (
-    set /p "USER_MSG=Enter commit message (Press ENTER for default): "
-)
-
-if not defined USER_MSG (
-    set "COMMIT_MSG=!DEFAULT_MSG!"
+:: Check if there are staged changes
+"%GIT_CMD%" diff --cached --quiet
+if %ERRORLEVEL% NEQ 0 (
+    :: There are changes to commit
+    set "USER_MSG=%~1"
+    if not defined USER_MSG (
+        set /p "USER_MSG=Enter commit message (Press ENTER for default): "
+    )
+    if not defined USER_MSG (
+        set "COMMIT_MSG=!DEFAULT_MSG!"
+    ) else (
+        set "COMMIT_MSG=!USER_MSG!"
+    )
+    echo [*] Committing changes with message: "!COMMIT_MSG!"
+    "%GIT_CMD%" commit -m "!COMMIT_MSG!"
 ) else (
-    set "COMMIT_MSG=!USER_MSG!"
+    echo [*] No newly staged file changes detected. Checking for unpushed commits...
 )
-
-echo [*] Committing with message: "!COMMIT_MSG!"
-"%GIT_CMD%" commit -m "!COMMIT_MSG!" >nul 2>&1
 
 :: 5. Push to GitHub Remote
 echo.
@@ -77,6 +88,10 @@ if %ERRORLEVEL% EQU 0 (
     echo   [SUCCESS] Successfully pushed all updates to GitHub!
     echo   Repository: https://github.com/MAYANK10339/mstorage
     echo   Branch: !BRANCH!
+    echo.
+    echo   [RENDER NOTICE] If your website is connected to Render,
+    echo   Render automatically detects this push and deploys the
+    echo   latest version in 1-2 minutes!
     echo ========================================================
 ) else (
     echo.
