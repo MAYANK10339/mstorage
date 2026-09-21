@@ -21,7 +21,8 @@
     pendingDeleteId: null,
     editingFileId: null,
     editSelectedTimer: 0,
-    replacementFile: null
+    replacementFile: null,
+    isUploading: false // Active upload lock: prevents conflicting streams from corrupting progress
   };
 
   // DOM Elements
@@ -477,14 +478,26 @@
     }
 
     el.btnSelectFiles.addEventListener('click', () => {
+      if (state.isUploading) {
+        showToast('An upload is currently in progress. Please wait...', 'info');
+        return;
+      }
       if (ensureAuth()) el.inputFiles.click();
     });
 
     el.btnSelectZip.addEventListener('click', () => {
+      if (state.isUploading) {
+        showToast('An upload is currently in progress. Please wait...', 'info');
+        return;
+      }
       if (ensureAuth()) el.inputZip.click();
     });
 
     el.btnSelectFolder.addEventListener('click', () => {
+      if (state.isUploading) {
+        showToast('An upload is currently in progress. Please wait...', 'info');
+        return;
+      }
       if (ensureAuth()) el.inputFolder.click();
     });
 
@@ -518,6 +531,10 @@
       e.preventDefault();
       el.dropzone.classList.remove('drag-active');
       if (!ensureAuth()) return;
+      if (state.isUploading) {
+        showToast('An upload is currently in progress. Please wait...', 'info');
+        return;
+      }
 
       const scanned = await scanFilesFromDataTransfer(e.dataTransfer);
       if (scanned.files && scanned.files.length > 0) {
@@ -544,76 +561,98 @@
     });
   }
 
-  // Recursive directory scanner for folder drag & drop
+  // Iterative Directory Reader: reads all entries without batch truncation
+  async function readAllEntriesFromReader(dirReader) {
+    const allEntries = [];
+    while (true) {
+      const batch = await new Promise((resolve, reject) => {
+        dirReader.readEntries(resolve, reject);
+      });
+      if (!batch || batch.length === 0) break;
+      allEntries.push(...batch);
+    }
+    return allEntries;
+  }
+
+  // Robust queue-based directory scanner for folder drag & drop
   async function scanFilesFromDataTransfer(dataTransfer) {
     const files = [];
     let detectedFolderName = '';
 
     if (dataTransfer.items && dataTransfer.items.length > 0) {
-      const entries = [];
+      const queue = [];
       for (let i = 0; i < dataTransfer.items.length; i++) {
         const item = dataTransfer.items[i];
         if (item.webkitGetAsEntry) {
           const entry = item.webkitGetAsEntry();
-          if (entry) entries.push(entry);
+          if (entry) queue.push({ entry, path: '' });
         }
       }
 
-      if (entries.length > 0) {
-        async function readEntry(entry, pathPrefix = '') {
+      if (queue.length > 0) {
+        let isFolderDetected = false;
+        while (queue.length > 0) {
+          const { entry, path: currentPath } = queue.shift();
           if (entry.isFile) {
-            return new Promise((res) => {
-              entry.file((f) => {
-                try {
-                  Object.defineProperty(f, 'webkitRelativePath', {
-                    value: pathPrefix + f.name,
-                    writable: true
-                  });
-                } catch (e) {}
-                files.push(f);
-                res();
-              }, () => res());
+            const file = await new Promise((resolve) => {
+              entry.file((f) => resolve(f), () => resolve(null));
             });
+            if (file) {
+              const relPath = currentPath + file.name;
+              file._mstRelativePath = relPath;
+              files.push(file);
+            }
           } else if (entry.isDirectory) {
-            if (!detectedFolderName) detectedFolderName = entry.name;
-            const dirReader = entry.createReader();
-            const readBatch = () => new Promise((res) => {
-              dirReader.readEntries(async (subEntries) => {
-                if (subEntries && subEntries.length > 0) {
-                  for (const sub of subEntries) {
-                    await readEntry(sub, pathPrefix + entry.name + '/');
-                  }
-                  await readBatch();
-                }
-                res();
-              }, () => res());
-            });
-            await readBatch();
+            isFolderDetected = true;
+            if (!detectedFolderName && !currentPath) {
+              detectedFolderName = entry.name;
+            }
+            try {
+              const dirReader = entry.createReader();
+              const entries = await readAllEntriesFromReader(dirReader);
+              const nextPath = currentPath + entry.name + '/';
+              for (const sub of entries) {
+                queue.push({ entry: sub, path: nextPath });
+              }
+            } catch (err) {
+              console.warn('Directory read notice:', err);
+            }
           }
         }
 
-        for (const ent of entries) {
-          await readEntry(ent, '');
-        }
-
         if (files.length > 0) {
-          return { files, folderName: detectedFolderName, isFolder: !!detectedFolderName };
+          return {
+            files,
+            folderName: detectedFolderName || (isFolderDetected ? 'Uploaded_Folder' : ''),
+            isFolder: isFolderDetected
+          };
         }
       }
     }
 
+    // Fallback to dataTransfer.files
     const rawFiles = Array.from(dataTransfer.files || []);
-    const firstRel = rawFiles.length > 0 ? rawFiles[0].webkitRelativePath : '';
-    const isFolder = Boolean(firstRel && firstRel.includes('/'));
-    const fName = isFolder ? firstRel.split('/')[0] : '';
+    let fName = '';
+    let isFolder = false;
+    for (const f of rawFiles) {
+      const p = f._mstRelativePath || f.webkitRelativePath;
+      if (p && p.includes('/')) {
+        fName = p.split('/')[0];
+        isFolder = true;
+        break;
+      }
+    }
     return { files: rawFiles, folderName: fName, isFolder };
   }
 
   function getFolderNameFromFiles(files) {
     if (!files || files.length === 0) return 'Uploaded Folder';
-    const firstPath = files[0].webkitRelativePath;
-    if (firstPath && firstPath.includes('/')) {
-      return firstPath.split('/')[0];
+    for (const f of files) {
+      const p = f._mstRelativePath || f.webkitRelativePath;
+      if (p && p.includes('/')) {
+        const seg = p.split('/')[0].trim();
+        if (seg) return seg;
+      }
     }
     return 'Directory_' + Date.now();
   }
@@ -642,6 +681,10 @@
   async function uploadFileList(files, uploadType = 'file', folderName = '') {
     if (!files || files.length === 0) return;
     if (!ensureAuth()) return;
+    if (state.isUploading) {
+      showToast('An upload is currently in progress. Please wait...', 'info');
+      return;
+    }
 
     // Folder upload with multi-file directory bundle
     if (uploadType === 'folder') {
@@ -659,11 +702,18 @@
     await uploadWithXerEngine(Array.from(files));
   }
 
-  async function uploadWithDirectStream(filesList) {
+  async function uploadWithDirectStream(filesList, initialProgress = 0) {
+    if (state.isUploading && initialProgress === 0) {
+      showToast('An upload is already in progress. Please wait...', 'info');
+      return;
+    }
+    state.isUploading = true;
+
     const totalBatchBytes = filesList.reduce((acc, f) => acc + (f.size || 0), 0);
     let completedBytes = 0;
-    let maxOverallPercent = 0;
+    let maxOverallPercent = initialProgress || 0;
     let maxOverallLoaded = 0;
+    const uploadedRecords = [];
 
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i];
@@ -675,7 +725,7 @@
       if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Streaming';
       if (el.xerEngineThreads) el.xerEngineThreads.textContent = 'Direct Stream (Normal)';
 
-      if (i === 0) {
+      if (i === 0 && initialProgress === 0) {
         el.progressBarFill.style.width = '0%';
         el.progressPercentageText.textContent = '0%';
       }
@@ -737,29 +787,20 @@
               el.progressBarFill.style.width = `${maxOverallPercent}%`;
               el.progressPercentageText.textContent = `${maxOverallPercent}%`;
 
-              showToast(isMulti ? `File [${i + 1}/${filesList.length}] uploaded!` : 'Direct stream upload completed!', 'success');
-              if (i === filesList.length - 1) {
-                setTimeout(() => {
-                  el.uploadProgressPanel.classList.add('hidden');
-                }, 900);
-              }
               if (data.files && data.files.length > 0) {
-                openShareModal(data.files[0]);
+                uploadedRecords.push(...data.files);
               }
-              loadUserFiles();
             } catch (e) {
-              showToast('Upload finished', 'info');
+              // Non-blocking
             }
           } else {
-            showToast(`Direct upload failed: ${xhr.statusText || xhr.status}`, 'error');
-            el.uploadProgressPanel.classList.add('hidden');
+            showToast(`Direct upload error: ${xhr.statusText || xhr.status}`, 'error');
           }
           resolve();
         });
 
         xhr.addEventListener('error', () => {
-          showToast('Network error during upload', 'error');
-          el.uploadProgressPanel.classList.add('hidden');
+          showToast('Network error during direct upload', 'error');
           resolve();
         });
 
@@ -769,16 +810,36 @@
       });
     }
 
+    state.isUploading = false;
+
+    if (uploadedRecords.length > 0) {
+      showToast(filesList.length > 1 ? `${filesList.length} files uploaded successfully!` : 'Direct stream upload completed!', 'success');
+      setTimeout(() => {
+        el.uploadProgressPanel.classList.add('hidden');
+      }, 800);
+      openShareModal(uploadedRecords[0]);
+      loadUserFiles();
+    } else {
+      el.uploadProgressPanel.classList.add('hidden');
+    }
+
     el.inputFiles.value = '';
     el.inputZip.value = '';
     el.inputFolder.value = '';
   }
 
   async function uploadWithXerEngine(filesList) {
+    if (state.isUploading) {
+      showToast('An upload is currently in progress. Please wait...', 'info');
+      return;
+    }
+    state.isUploading = true;
+
     const totalBatchBytes = filesList.reduce((acc, f) => acc + (f.size || 0), 0);
     let completedBytes = 0;
     let maxOverallPercent = 0;
     let maxOverallLoaded = 0;
+    const uploadedRecords = [];
 
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i];
@@ -877,30 +938,27 @@
             el.progressBarFill.style.width = `${maxOverallPercent}%`;
             el.progressPercentageText.textContent = `${maxOverallPercent}%`;
 
-            showToast(isMulti ? `File [${i + 1}/${filesList.length}] uploaded successfully!` : 'Upload completed successfully!', 'success');
-            if (i === filesList.length - 1) {
-              setTimeout(() => {
-                el.uploadProgressPanel.classList.add('hidden');
-                if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
-              }, 1200);
-            }
-
             if (record) {
-              openShareModal(record);
+              uploadedRecords.push(record);
             }
-            loadUserFiles();
             currentXerUpload = null;
             resolve();
           },
           onError: async (err) => {
             console.warn('[XerEngine Beta Notice] Parallel chunks issue:', err.message);
             showToast('Parallel chunks notice. Completing upload with Direct Stream...', 'info');
-            currentXerUpload = null;
+            // Cleanly cancel active chunk workers so no zombie callbacks run
+            if (currentXerUpload) {
+              try { currentXerUpload.cancel(); } catch (e) {}
+              currentXerUpload = null;
+            }
             try {
-              await uploadWithDirectStream([file]);
+              state.isUploading = false; // allow fallback stream to operate
+              await uploadWithDirectStream([file], maxOverallPercent);
             } catch (fallbackErr) {
               showToast(`Direct stream error: ${fallbackErr.message}`, 'error');
               el.uploadProgressPanel.classList.add('hidden');
+              state.isUploading = false;
             }
             resolve();
           }
@@ -911,6 +969,20 @@
       });
     }
 
+    state.isUploading = false;
+
+    if (uploadedRecords.length > 0) {
+      showToast(filesList.length > 1 ? `${filesList.length} files uploaded successfully!` : 'Upload completed successfully!', 'success');
+      setTimeout(() => {
+        el.uploadProgressPanel.classList.add('hidden');
+        if (el.xerInstantBanner) el.xerInstantBanner.classList.add('hidden');
+      }, 800);
+      openShareModal(uploadedRecords[0]);
+      loadUserFiles();
+    } else {
+      el.uploadProgressPanel.classList.add('hidden');
+    }
+
     // Reset inputs
     el.inputFiles.value = '';
     el.inputZip.value = '';
@@ -919,16 +991,22 @@
 
   function uploadFolderBundle(files, folderName) {
     if (!ensureAuth()) return;
+    if (state.isUploading) {
+      showToast('An upload is currently in progress. Please wait for it to complete.', 'info');
+      return;
+    }
+
     const fileList = Array.from(files);
     if (fileList.length === 0) return;
 
+    state.isUploading = true;
     const detectedFolderName = folderName || getFolderNameFromFiles(fileList);
     const formData = new FormData();
     const relativePaths = [];
 
     for (let i = 0; i < fileList.length; i++) {
       const f = fileList[i];
-      const relPath = f.webkitRelativePath || f.name;
+      const relPath = f._mstRelativePath || f.webkitRelativePath || f.name;
       relativePaths.push(relPath);
       formData.append('files', f, relPath);
     }
@@ -945,8 +1023,9 @@
     el.progressFileName.textContent = `Packaging folder: ${detectedFolderName}.zip (${fileList.length} items)`;
     el.progressBarFill.style.width = '0%';
     el.progressPercentageText.textContent = '0%';
-    el.progressStatusSpeed.textContent = 'Uploading and packaging into .zip archive...';
+    el.progressStatusSpeed.textContent = 'Uploading and packaging folder into .zip...';
     if (el.xerEngineThreads) el.xerEngineThreads.textContent = `Auto-Zip (${fileList.length} items)`;
+    if (el.btnXerPauseText) el.btnXerPauseText.textContent = 'Packaging';
 
     const speedMeter = createSpeedMeter(1.5);
     const startTime = Date.now();
@@ -964,25 +1043,39 @@
         el.progressPercentageText.textContent = `${maxFolderPercent}%`;
         el.progressStatusSize.textContent = `${formatBytes(maxFolderLoaded)} / ${formatBytes(e.total)}`;
 
-        const instantSpeed = speedMeter.record(maxFolderLoaded);
-        const now = Date.now();
-        const effectiveSpeed = instantSpeed > 0 
-          ? instantSpeed 
-          : (maxFolderLoaded / ((now - startTime) / 1000 || 1));
+        if (maxFolderPercent >= 100 || e.loaded >= e.total) {
+          el.progressStatusSpeed.textContent = 'Server finalizing & packaging .zip archive... Please wait';
+          if (el.xerEtaChip) el.xerEtaChip.textContent = 'Packaging .zip...';
+        } else {
+          const instantSpeed = speedMeter.record(maxFolderLoaded);
+          const now = Date.now();
+          const effectiveSpeed = instantSpeed > 0 
+            ? instantSpeed 
+            : (maxFolderLoaded / ((now - startTime) / 1000 || 1));
 
-        const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
-        el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
-        const remaining = Math.max(0, e.total - maxFolderLoaded);
-        const eta = effectiveSpeed > 0 ? Math.ceil(remaining / effectiveSpeed) : 0;
-        if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(eta)}`;
+          const mbps = ((effectiveSpeed * 8) / (1024 * 1024)).toFixed(1);
+          el.progressStatusSpeed.textContent = `${formatBytes(effectiveSpeed)}/s (${mbps} Mbps)`;
+          const remaining = Math.max(0, e.total - maxFolderLoaded);
+          const eta = effectiveSpeed > 0 ? Math.ceil(remaining / effectiveSpeed) : 0;
+          if (el.xerEtaChip) el.xerEtaChip.textContent = `ETA: ${formatEta(eta)}`;
+        }
       }
     });
+
+    const cleanup = () => {
+      state.isUploading = false;
+      el.inputFolder.value = '';
+      el.inputFiles.value = '';
+      el.inputZip.value = '';
+    };
 
     xhr.onreadystatechange = () => {
       if (xhr.readyState === XMLHttpRequest.DONE) {
         if (xhr.status === 200 || xhr.status === 201) {
           try {
             const data = JSON.parse(xhr.responseText);
+            el.progressBarFill.style.width = '100%';
+            el.progressPercentageText.textContent = '100%';
             showToast(`Folder "${detectedFolderName}" packaged into .zip and uploaded successfully!`, 'success');
             setTimeout(() => {
               el.uploadProgressPanel.classList.add('hidden');
@@ -995,11 +1088,28 @@
             showToast('Folder uploaded', 'info');
           }
         } else {
-          showToast('Folder upload failed. Please try again.', 'error');
+          let errMsg = 'Folder upload failed. Please try again.';
+          try {
+            const errData = JSON.parse(xhr.responseText);
+            if (errData && errData.error) errMsg = errData.error;
+          } catch (e) {}
+          showToast(errMsg, 'error');
           el.uploadProgressPanel.classList.add('hidden');
         }
-        el.inputFolder.value = '';
+        cleanup();
       }
+    };
+
+    xhr.onerror = () => {
+      showToast('Network error during folder upload', 'error');
+      el.uploadProgressPanel.classList.add('hidden');
+      cleanup();
+    };
+
+    xhr.onabort = () => {
+      showToast('Folder upload cancelled', 'info');
+      el.uploadProgressPanel.classList.add('hidden');
+      cleanup();
     };
 
     xhr.open('POST', '/api/files/upload', true);
@@ -1677,9 +1787,10 @@
     if (el.btnXerCancel) {
       el.btnXerCancel.addEventListener('click', () => {
         if (currentXerUpload) {
-          currentXerUpload.cancel();
+          try { currentXerUpload.cancel(); } catch (e) {}
           currentXerUpload = null;
         }
+        state.isUploading = false;
         el.uploadProgressPanel.classList.add('hidden');
         showToast('Upload cancelled by user', 'info');
       });

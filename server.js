@@ -261,11 +261,13 @@ const storage = multer.diskStorage({
   }
 });
 
-// No arbitrary file size limits; stream handles large files
+// No arbitrary file size limits; stream handles large files and massive folder bundles
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 1024 * 5 // 5GB per individual file stream safely handled
+    fileSize: 1024 * 1024 * 1024 * 5, // 5GB per individual file stream safely handled
+    fieldSize: 50 * 1024 * 1024,      // 50MB for large relativePaths JSON in folder bundles
+    files: 5000                       // Up to 5,000 files in a single folder upload
   }
 });
 
@@ -471,7 +473,21 @@ app.post('/api/payment/simulate-verify', (req, res) => {
 // -------------------------------------------------------------
 
 // Upload files / folder / zip
-app.post('/api/files/upload', authenticateToken, upload.array('files'), async (req, res) => {
+app.post('/api/files/upload', authenticateToken, (req, res, next) => {
+  upload.array('files')(req, res, (err) => {
+    if (err) {
+      console.error('[Upload Multer Error]:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'A file exceeds the maximum allowed upload size (5GB)' });
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ error: 'Folder contains too many files (maximum 5,000 files allowed)' });
+      }
+      return res.status(400).json({ error: 'File upload failed: ' + (err.message || err.code) });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files provided for upload' });
@@ -518,7 +534,9 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), async (r
           const f = req.files[i];
           const localPath = path.join(STORAGE_DIR, f.filename);
           let relPath = relativePaths[i] || f.originalname;
-          relPath = relPath.replace(/^[/\\]+/, '');
+          // Normalize Windows backslashes and strip dangerous relative jumps
+          relPath = String(relPath || f.originalname).replace(/\\/g, '/').replace(/^\/+/, '').replace(/\.\.\//g, '');
+          if (!relPath || relPath === '.') relPath = f.originalname;
           if (fs.existsSync(localPath)) {
             archive.file(localPath, { name: relPath });
           }
@@ -550,6 +568,7 @@ app.post('/api/files/upload', authenticateToken, upload.array('files'), async (r
         mimeType: 'application/zip',
         isFolder: false,
         isZip: true,
+        fileCount: req.files.length,
         timerSeconds: timerSeconds,
         downloads: 0,
         createdAt: new Date().toISOString(),
@@ -1027,6 +1046,19 @@ app.get('/api/files/download/:id', async (req, res) => {
   writeDB(db);
 
   if (file.isFolder) {
+    // 1. If folder is stored as pre-packaged .zip archive on disk or Cloud Vault
+    if (file.storedName && fs.existsSync(path.join(STORAGE_DIR, file.storedName))) {
+      const targetPath = path.join(STORAGE_DIR, file.storedName);
+      const cleanFolderName = (file.name || 'Folder_Download').replace(/[/\\?%*:|"<>]/g, '_');
+      const zipFileName = cleanFolderName.toLowerCase().endsWith('.zip') ? cleanFolderName : `${cleanFolderName}.zip`;
+      return res.download(targetPath, zipFileName);
+    }
+    if (file.vaultData) {
+      const cleanFolderName = (file.name || 'Folder_Download').replace(/[/\\?%*:|"<>]/g, '_');
+      const zipFileName = cleanFolderName.toLowerCase().endsWith('.zip') ? cleanFolderName : `${cleanFolderName}.zip`;
+      return await telegramVault.streamToResponse(file.vaultData, zipFileName, res);
+    }
+
     if (!file.items || file.items.length === 0) {
       return res.status(404).send('Folder contents unavailable on server');
     }
