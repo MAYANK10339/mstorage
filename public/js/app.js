@@ -702,7 +702,7 @@
     await uploadWithXerEngine(Array.from(files));
   }
 
-  async function uploadWithDirectStream(filesList, initialProgress = 0) {
+  async function uploadWithDirectStream(filesList, initialProgress = 0, initialLoaded = 0) {
     if (state.isUploading && initialProgress === 0) {
       showToast('An upload is already in progress. Please wait...', 'info');
       return;
@@ -712,7 +712,7 @@
     const totalBatchBytes = filesList.reduce((acc, f) => acc + (f.size || 0), 0);
     let completedBytes = 0;
     let maxOverallPercent = initialProgress || 0;
-    let maxOverallLoaded = 0;
+    let maxOverallLoaded = initialLoaded || 0;
     const uploadedRecords = [];
 
     for (let i = 0; i < filesList.length; i++) {
@@ -954,7 +954,7 @@
             }
             try {
               state.isUploading = false; // allow fallback stream to operate
-              await uploadWithDirectStream([file], maxOverallPercent);
+              await uploadWithDirectStream([file], maxOverallPercent, maxOverallLoaded);
             } catch (fallbackErr) {
               showToast(`Direct stream error: ${fallbackErr.message}`, 'error');
               el.uploadProgressPanel.classList.add('hidden');

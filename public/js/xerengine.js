@@ -75,8 +75,8 @@
       // 100 MB - 1 GB: 4MB chunks, 2 parallel pipelines
       return { chunkSize: 4 * 1024 * 1024, concurrency: isSlowConn ? 1 : 2 };
     } else {
-      // 1 GB+: 6MB chunks, 2 parallel pipelines for stable throughput
-      return { chunkSize: 6 * 1024 * 1024, concurrency: isSlowConn ? 1 : 2 };
+      // 1 GB+: 8MB chunks, 2 parallel pipelines for stable throughput
+      return { chunkSize: 8 * 1024 * 1024, concurrency: isSlowConn ? 1 : 2 };
     }
   }
 
@@ -246,6 +246,10 @@
         }
       } catch (err) {
         this.stopSpeedLoop();
+        this.activeControllers.forEach(xhr => {
+          try { xhr.abort(); } catch (e) {}
+        });
+        this.activeControllers.clear();
         if (this.state !== 'cancelled' && this.state !== 'paused') {
           this.setState('error');
           console.error('[XerEngine Error]:', err);
@@ -294,7 +298,7 @@
         if (chunkIndex === undefined) break;
 
         let retries = 0;
-        const maxRetries = 4;
+        const maxRetries = 8;
         let success = false;
 
         while (retries <= maxRetries && !success && this.state === 'uploading') {
@@ -302,12 +306,13 @@
             await this.uploadChunk(chunkIndex);
             success = true;
           } catch (err) {
+            if (this.state !== 'uploading') return;
             retries++;
             if (retries > maxRetries) {
               queue.unshift(chunkIndex);
               throw new Error(`Chunk ${chunkIndex} failed after ${maxRetries} retries: ${err.message}`);
             }
-            await new Promise(r => setTimeout(r, retries * 250));
+            await new Promise(r => setTimeout(r, Math.min(5000, retries * 500)));
           }
         }
       }
@@ -331,13 +336,15 @@
           if (this.state !== 'uploading') return;
           if (e.lengthComputable) {
             const currentChunkBytes = Math.min(e.loaded, chunkLength);
-            this.chunkBytesMap.set(chunkIndex, currentChunkBytes);
+            const prev = this.chunkBytesMap.get(chunkIndex) || 0;
+            this.chunkBytesMap.set(chunkIndex, Math.max(prev, currentChunkBytes));
             this.recalculateProgress();
           }
         });
 
         xhr.addEventListener('load', () => {
           this.activeControllers.delete(chunkIndex);
+          if (this.state !== 'uploading') return;
           if (xhr.status === 200 || xhr.status === 201) {
             this.completedChunks.add(chunkIndex);
             this.chunkBytesMap.set(chunkIndex, chunkLength);
@@ -354,17 +361,20 @@
 
         xhr.addEventListener('error', () => {
           this.activeControllers.delete(chunkIndex);
+          if (this.state !== 'uploading') return;
           reject(new Error('Network error uploading chunk'));
         });
 
         xhr.addEventListener('abort', () => {
           this.activeControllers.delete(chunkIndex);
+          if (this.state !== 'uploading') return;
           reject(new Error('Chunk upload aborted'));
         });
 
-        xhr.timeout = 90000; // 90s timeout per chunk prevents socket stalls
+        xhr.timeout = 120000; // 120s timeout per chunk prevents socket stalls on residential uplinks
         xhr.addEventListener('timeout', () => {
           this.activeControllers.delete(chunkIndex);
+          if (this.state !== 'uploading') return;
           reject(new Error('Chunk upload timed out - auto retrying'));
         });
 

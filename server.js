@@ -1533,7 +1533,7 @@ app.get('*', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`=========================================`);
   console.log(`  Mstorage Server Active`);
   console.log(`  Developer & Creator: Mayank Mandrai`);
@@ -1542,3 +1542,12 @@ app.listen(PORT, () => {
   console.log(`  Ready for 24/7 Deployment on Render`);
   console.log(`=========================================`);
 });
+
+// Configure robust streaming timeouts for massive 1GB - 5GB+ file and folder stream uploads
+server.timeout = 0;               // Disable 2-min socket timeout
+server.keepAliveTimeout = 600000; // 10 minutes
+server.headersTimeout = 605000;   // Higher than keepAliveTimeout
+if (server.requestTimeout !== undefined) {
+  server.requestTimeout = 0;      // Disable Node 18+ 5-minute requestTimeout kill
+}
+
